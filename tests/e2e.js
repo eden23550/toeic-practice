@@ -128,6 +128,26 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       });
     }
 
+    await step('拼字：輸入注音會提醒切換鍵盤，全形英文字母算對', async () => {
+      await page.click('[data-tab="home"]');
+      await page.selectOption('#free-mode', 'spell');
+      await page.selectOption('#free-scope', 'all');
+      await page.click('[data-action="start-free"]');
+      expect((await page.getAttribute('#spell-input', 'inputmode')) === 'email', '拼字輸入框應該請手機顯示英文鍵盤');
+      await page.fill('#spell-input', 'ㄜ');
+      await page.press('#spell-input', 'Enter');
+      expect(await page.isVisible('.spell-warn'), '輸入注音應該出現切換鍵盤的提醒');
+      expect(!(await page.$('.fb-head')), '輸入注音不應該被判定答題');
+      const zh = (await page.textContent('.prompt-zh')).replace(/^\S+\s/, '').trim();
+      const word = await page.evaluate((zh) => window.TOEIC_WORDS.find((w) => w.zh === zh).word, zh);
+      // 中文輸入法的全形字母：ａ-ｚ 是 U+FF41 起
+      const fullWidth = word.replace(/[a-z]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 97 + 0xFF41));
+      await page.fill('#spell-input', fullWidth);
+      await page.press('#spell-input', 'Enter');
+      expect((await text('.fb-head')).startsWith('✓'), `全形的「${fullWidth}」應該算答對`);
+      await page.click('[data-action="exit"]');
+    });
+
     await step('完成一輪每日句型練習', async () => {
       await page.click('[data-tab="home"]');
       await page.click('[data-action="start-phrases"]');

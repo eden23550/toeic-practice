@@ -16,7 +16,7 @@
   function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.3.3';
+  var APP_VERSION = '0.3.4';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -81,7 +81,10 @@
   }
   function exPlain(en) { return en.replace(/[\[\]]/g, ''); }
   function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-  function normalize(s) { return s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[’‘]/g, "'"); }
+  // NFKC 會把中文輸入法打出的全形英文字母（ａｂｃ）轉成一般的半形字母
+  function normalize(s) { return s.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[’‘]/g, "'"); }
+  // 出現注音、中文等東亞文字，通常是忘了切換成英文鍵盤（打錯字母、數字則照常判錯）
+  function looksNonEnglish(s) { return /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/.test(normalize(s)); }
 
   // ---------- 資料儲存 ----------
   function defaultState() {
@@ -935,8 +938,10 @@
       h += '<div class="prompt"><h2 class="prompt-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</h2>' +
         speakBtn(w.word, true) + '<p class="spell-hint">' + hint + '</p></div>';
       if (!revealed) {
-        h += '<form class="spell-form" data-form="spell"><input id="spell-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="輸入英文拼字">' +
+        // inputmode="email" 讓手機優先顯示英文鍵盤（iPhone 不會跳出注音），而且仍有空白鍵
+        h += '<form class="spell-form" data-form="spell"><input id="spell-input" lang="en" inputmode="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="輸入英文拼字">' +
           '<button class="btn primary" type="submit">確定</button></form>' +
+          '<p class="spell-warn" role="alert" hidden>看起來輸入了注音或中文，請切換成英文鍵盤再輸入一次（這次不算答錯）</p>' +
           '<button class="btn link" data-action="give-up">不知道，看答案</button>';
       } else {
         h += '<p class="your-answer">你的答案：<b>' + esc(session.spellInput || '（未作答）') + '</b></p>' + feedback(w);
@@ -1259,6 +1264,11 @@
     var input = document.getElementById('spell-input');
     var val = input.value;
     if (!val.trim()) return;
+    if (looksNonEnglish(val)) {
+      document.querySelector('.spell-warn').hidden = false;
+      input.select();
+      return;
+    }
     var w = WORD_BY_ID[currentItem().id];
     session.spellInput = val.trim();
     answer(normalize(val) === normalize(w.word) ? 'correct' : 'wrong');
