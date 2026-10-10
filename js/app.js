@@ -16,12 +16,19 @@
   function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.3.2';
+  var APP_VERSION = '0.3.3';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
-  // 不需要登入的 Google 表單；App 會先複製題目資訊，讓使用者貼進表單
+  // 不需要登入的 Google 表單，打開時會自動帶入題目資訊（預先填入連結）
   var REPORT_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfz_i_0iS4KOdqzezJpXvbfaOZkrSCFq2qHggGOqSFeVaitDQ/viewform';
+  // 表單各題的代號；改了表單題目要到「預先填寫表單」重新取得
+  var REPORT_FIELDS = {
+    type: 'entry.1300635232',     // 回報類型（選項文字必須和表單完全相同）
+    info: 'entry.441789377',      // 題目或錯誤資訊
+    device: 'entry.1426037231',   // App 版本與裝置
+  };
+  var REPORT_INFO_MAX = 3000;     // 網址太長表單會打不開，資訊編碼後超過這個長度就截斷
   // 各記憶等級答對後的下次複習間隔（天）
   var INTERVALS = [0, 1, 3, 7, 14, 30, 60];
   var MAX_LEVEL = INTERVALS.length - 1;
@@ -824,9 +831,9 @@
 
     var errCount = readErrors().length;
     h += '<section class="card"><h2>問題回報</h2>' +
-      '<p class="hint">題目有問題時，作答後按「🚩 回報這題」。App 出錯時，按「複製錯誤紀錄」，再貼到回報表單。都不需要登入。</p>' +
+      '<p class="hint">題目有問題時，作答後按「🚩 回報這題」。App 出錯時，按「回報錯誤紀錄」。表單會自動填好相關資訊，不需要登入。</p>' +
       '<p class="row">錯誤紀錄<span class="err-count">' + errCount + ' 筆</span></p>' +
-      '<div class="btn-row"><button class="btn" data-action="copy-errors">複製錯誤紀錄</button>' +
+      '<div class="btn-row"><button class="btn" data-action="copy-errors">回報錯誤紀錄</button>' +
       (errCount ? '<button class="btn" data-action="clear-errors">清除</button>' : '') + '</div>' +
       '<button class="btn primary block" data-action="report-general">回報問題或建議</button>' +
       '<p class="hint">有 GitHub 帳號的話，也可以<a href="' + ISSUE_URL + '" target="_blank" rel="noopener">到 GitHub 回報</a>。</p></section>';
@@ -1029,7 +1036,6 @@
     if (item.mode === 'spell') lines.push('我的拼字：' + (session.spellInput || '（未作答）'));
     if (item.mode === 'p_order') lines.push('我的排列：' + session.orderInput);
     lines.push('正確答案：' + ((q && q.answer) || speechText(item.id)));
-    lines.push('', '哪裡怪怪的：（請寫在這裡）', '', deviceInfo());
     return lines.join('\n');
   }
 
@@ -1037,11 +1043,27 @@
     try { return JSON.parse(localStorage.getItem(ERROR_KEY) || '[]'); } catch (e) { return []; }
   }
 
+  // 只帶最近 5 筆，最新的在前面，避免網址太長
   function errorReportText() {
-    var errs = readErrors();
-    return ['【錯誤紀錄】', deviceInfo(), '', errs.length ? errs.map(function (e) {
+    var errs = readErrors().slice(-5).reverse();
+    return ['【錯誤紀錄】', errs.length ? errs.map(function (e) {
       return e.time + '  ' + e.msg + (e.src ? '  @ ' + e.src : '') + (e.stack ? '\n' + e.stack : '');
     }).join('\n\n') : '（沒有錯誤紀錄）'].join('\n');
+  }
+
+  function clampForUrl(text) {
+    if (encodeURIComponent(text).length <= REPORT_INFO_MAX) return text;
+    var cut = text;
+    while (cut && encodeURIComponent(cut + '…（已截斷）').length > REPORT_INFO_MAX) cut = cut.slice(0, -50);
+    return cut + '…（已截斷）';
+  }
+
+  function reportUrl(type, info) {
+    var params = [];
+    if (type) params.push(REPORT_FIELDS.type + '=' + encodeURIComponent(type));
+    if (info) params.push(REPORT_FIELDS.info + '=' + encodeURIComponent(clampForUrl(info)));
+    params.push(REPORT_FIELDS.device + '=' + encodeURIComponent(deviceInfo()));
+    return REPORT_FORM_URL + '?usp=pp_url&' + params.join('&');
   }
 
   // 優先用剪貼簿 API，不支援時改用舊方法；done(true/false) 回報是否成功
@@ -1066,33 +1088,27 @@
     }
   }
 
-  // 回報視窗：先複製資訊，再讓使用者自己點連結打開表單
+  // 回報視窗：表單連結已經帶入題目資訊，使用者只要寫哪裡有問題
   // （用真的連結而不是 window.open，iPhone 才不會把它當成彈出視窗擋掉）
-  function openReport(text, what) {
+  // type：表單「回報類型」的選項文字，沒有對應的選項就傳 null 讓使用者自己選
+  function openReport(type, info, what) {
     closeSheet();
+    var raw = (info ? info + '\n\n' : '') + deviceInfo();
     var el = document.createElement('div');
     el.className = 'sheet-backdrop';
     el.setAttribute('data-close-sheet', '');
     el.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
       '<h2 id="sheet-title">回報問題</h2>' +
-      '<p class="sheet-status">正在複製' + esc(what) + '…</p>' +
+      '<p class="sheet-status">✅ ' + esc(what) + '已經自動填進表單</p>' +
       '<ol class="sheet-steps"><li>按下面的按鈕打開回報表單（不用登入）</li>' +
-      '<li>選擇回報類型，寫下哪裡有問題</li>' +
-      '<li>在「題目或錯誤資訊」長按<b>貼上</b>，然後送出</li></ol>' +
-      '<a class="btn primary block" href="' + REPORT_FORM_URL + '" target="_blank" rel="noopener" data-close-sheet>打開回報表單</a>' +
-      '<details class="sheet-raw"><summary>沒有複製成功？點這裡手動複製</summary><textarea readonly rows="8"></textarea></details>' +
+      '<li>' + (type ? '' : '選擇回報類型，') + '在「哪裡有問題？」寫下你遇到的狀況</li>' +
+      '<li>按「提交」送出</li></ol>' +
+      '<a class="btn primary block" href="' + esc(reportUrl(type, info)) + '" target="_blank" rel="noopener" data-close-sheet>打開回報表單</a>' +
+      '<details class="sheet-raw"><summary>表單裡沒有出現這些資訊？點這裡手動複製</summary>' +
+      '<textarea readonly rows="8"></textarea><button class="btn small" data-copy-raw>複製</button></details>' +
       '<button class="btn link" data-close-sheet>關閉</button></div>';
-    el.querySelector('textarea').value = text;
+    el.querySelector('textarea').value = raw;
     document.body.appendChild(el);
-    copyToClipboard(text, function (ok) {
-      var status = el.querySelector('.sheet-status');
-      if (ok) {
-        status.textContent = '✅ 已複製' + what;
-      } else {
-        status.textContent = '⚠️ 沒辦法自動複製，請展開下方的內容手動複製';
-        el.querySelector('.sheet-raw').open = true;
-      }
-    });
   }
 
   function closeSheet() {
@@ -1125,6 +1141,13 @@
       // 點連結時不要擋住預設行為，表單才能正常打開
       setTimeout(closeSheet);
       if (closer.tagName !== 'A') return;
+    }
+    var copyRaw = e.target.closest('[data-copy-raw]');
+    if (copyRaw) {
+      copyToClipboard(document.querySelector('.sheet-raw textarea').value, function (ok) {
+        copyRaw.textContent = ok ? '已複製 ✓' : '請長按上方文字手動複製';
+      });
+      return;
     }
     if (document.querySelector('.sheet-backdrop')) return;
     var t = e.target.closest('button, [data-tab]');
@@ -1213,9 +1236,9 @@
       case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
       case 'give-up': session.spellInput = ''; answer('wrong'); break;
       case 'export': exportData(); break;
-      case 'report': openReport(reportText(), '題目資訊'); break;
-      case 'copy-errors': openReport(errorReportText(), '錯誤紀錄'); break;
-      case 'report-general': openReport('【一般回報】\n\n' + deviceInfo(), '裝置資訊'); break;
+      case 'report': openReport('題目有問題', reportText(), '題目資訊'); break;
+      case 'copy-errors': openReport('App 出錯', errorReportText(), '錯誤紀錄'); break;
+      case 'report-general': openReport(null, '', 'App 版本與裝置資訊'); break;
       case 'clear-errors':
         try { localStorage.removeItem(ERROR_KEY); } catch (err) { /* 儲存空間不可用 */ }
         render();
