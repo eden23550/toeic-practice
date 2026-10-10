@@ -7,6 +7,7 @@ const path = require('path');
 global.window = {};
 require(path.join(__dirname, '../js/words.js'));
 require(path.join(__dirname, '../js/phrases.js'));
+require(path.join(__dirname, '../js/toeic.js'));
 
 const errors = [];
 const fail = (where, msg) => errors.push(`${where}: ${msg}`);
@@ -86,6 +87,28 @@ phrases.forEach((p) => {
   if (p.q && (!p.q.en || !p.q.zh)) fail(where, '「對方說的話」要有英文和中文');
 });
 
+// ---------- 多益題型 ----------
+const drills = window.TOEIC_DRILLS;
+const drillIds = new Set();
+const CHOICES = { col: 4, gram: 4, resp: 3 };
+drills.forEach((d) => {
+  const where = `多益題「${d.sentence || d.question}」`;
+  if (drillIds.has(d.id)) fail(where, '重複的題目');
+  drillIds.add(d.id);
+  if (d.choices.length !== CHOICES[d.type]) fail(where, `選項要剛好 ${CHOICES[d.type]} 個`);
+  if (new Set(d.choices.map((c) => c.toLowerCase())).size !== d.choices.length) fail(where, '選項有重複');
+  if (d.choices[0] !== d.answer) fail(where, '第一個選項必須是正確答案');
+  if (d.choices.some((c) => !c || !c.trim())) fail(where, '有空白的選項');
+  if (!d.note || !d.note.trim()) fail(where, '缺少說明');
+  if (d.type === 'resp') {
+    if (!d.zh) fail(where, '缺少問句中譯');
+  } else {
+    if ((d.sentence.match(/___/g) || []).length !== 1) fail(where, '句子裡要剛好有一個 ___ 空格');
+    if (d.type === 'gram' && !d.topic) fail(where, '缺少文法分類');
+    if (d.type === 'col' && !d.zh) fail(where, '缺少中譯');
+  }
+});
+
 // ---------- 結果 ----------
 if (errors.length) {
   console.error(`資料檢查失敗，共 ${errors.length} 個問題：\n`);
@@ -93,4 +116,6 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`✓ 資料檢查通過：${words.length} 個單字（${words.filter((w) => w.forms.length).length} 個有詞性填空題）、` +
-  `${phrases.length} 句句型（${phrases.filter((p) => p.q).length} 句有情境對話題）`);
+  `${phrases.length} 句句型（${phrases.filter((p) => p.q).length} 句有情境對話題）、` +
+  `多益題 ${drills.length} 題（搭配詞 ${drills.filter((d) => d.type === 'col').length}、` +
+  `Part 5 文法 ${drills.filter((d) => d.type === 'gram').length}、Part 2 聽力 ${drills.filter((d) => d.type === 'resp').length}）`);
