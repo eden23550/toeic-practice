@@ -33,9 +33,13 @@ python3 -m http.server 8000
 
 ## 回報問題
 
-- **題目有問題**（兩個選項都對、例句怪怪的）：作答後按「🚩 這題怪怪的？回報這題」，App 會自動複製題目資訊。
+回報都透過 [Google 表單](https://docs.google.com/forms/d/e/1FAIpQLSfz_i_0iS4KOdqzezJpXvbfaOZkrSCFq2qHggGOqSFeVaitDQ/viewform)，不需要登入：
+
+- **題目有問題**（兩個選項都對、例句怪怪的）：作答後按「🚩 這題怪怪的？回報這題」。
 - **App 出錯**：到「設定 → 問題回報」按「複製錯誤紀錄」。
-- 把複製的內容傳給開發者，或到 [GitHub Issues](https://github.com/eden23550/toeic-practice/issues/new/choose) 開一張單。
+- **其他問題或建議**：到「設定 → 問題回報」按「回報問題或建議」。
+
+App 會先自動複製題目或錯誤資訊，再提供表單連結，在表單的「題目或錯誤資訊」欄貼上即可。有 GitHub 帳號的話，也可以到 [GitHub Issues](https://github.com/eden23550/toeic-practice/issues/new/choose) 回報。
 
 ## 測試
 

@@ -1,5 +1,5 @@
 // 修改 App 檔案後請更新版本號，讓使用者拿到新版；要和 js/app.js 的 APP_VERSION 一致（npm test 會檢查）
-var CACHE = 'toeic-practice-v0.3.1';
+var CACHE = 'toeic-practice-v0.3.2';
 var FILES = [
   './',
   'index.html',

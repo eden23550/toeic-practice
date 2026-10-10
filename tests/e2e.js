@@ -166,15 +166,24 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       results.forEach(([correct, judged]) => expect(correct === judged, `排${correct ? '對' : '錯'}卻判成${judged ? '對' : '錯'}`));
     });
 
-    await step('回報這題：複製題目資訊', async () => {
+    // 回報視窗：確認已複製、表單連結正確，並可關閉
+    async function checkReportSheet(mustInclude) {
+      await page.waitForSelector('.sheet-status:has-text("已複製")');
+      const clip = await page.evaluate(() => navigator.clipboard.readText());
+      mustInclude.forEach((t) => expect(clip.includes(t), `剪貼簿內容缺少「${t}」：` + clip.slice(0, 80)));
+      const href = await page.getAttribute('.sheet a.btn', 'href');
+      expect(/^https:\/\/docs\.google\.com\/forms\//.test(href), '回報表單連結不正確：' + href);
+      await page.click('.sheet button[data-close-sheet]');
+      await page.waitForSelector('.sheet-backdrop', { state: 'detached' });
+    }
+
+    await step('回報這題：複製題目資訊並提供表單連結', async () => {
       await page.click('[data-tab="home"]');
       await page.selectOption('#free-mode', 'fill');
       await page.click('[data-action="start-free"]');
       await answerCurrent();
       await page.click('[data-action="report"]');
-      await page.waitForSelector('.toast');
-      const clip = await page.evaluate(() => navigator.clipboard.readText());
-      expect(clip.includes('【題目回報】') && clip.includes('選項：') && clip.includes('App 版本'), '剪貼簿內容不完整：' + clip.slice(0, 80));
+      await checkReportSheet(['【題目回報】', '選項：', 'App 版本']);
       await page.click('[data-action="next"]');
       await page.click('[data-action="exit"]');
     });
@@ -185,9 +194,9 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-tab="settings"]');
       expect((await text('.err-count')) === '1 筆', '應該記錄到 1 筆錯誤');
       await page.click('[data-action="copy-errors"]');
-      await page.waitForSelector('.toast');
-      const clip = await page.evaluate(() => navigator.clipboard.readText());
-      expect(clip.includes('e2e-test-error'), '複製的錯誤紀錄應該包含錯誤訊息');
+      await checkReportSheet(['【錯誤紀錄】', 'e2e-test-error']);
+      await page.click('[data-action="report-general"]');
+      await checkReportSheet(['【一般回報】', 'App 版本']);
       await page.click('[data-action="clear-errors"]');
       expect((await text('.err-count')) === '0 筆', '清除後應該是 0 筆');
     });
