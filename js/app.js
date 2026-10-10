@@ -15,7 +15,11 @@
   function getItem(id) { return isPhrase(id) ? PHRASE_BY_ID[id] : WORD_BY_ID[id]; }
   function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
 
+  // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
+  var APP_VERSION = '0.3.1';
   var STORE_KEY = 'toeic-practice-v1';
+  var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
+  var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
   // 各記憶等級答對後的下次複習間隔（天）
   var INTERVALS = [0, 1, 3, 7, 14, 30, 60];
   var MAX_LEVEL = INTERVALS.length - 1;
@@ -458,6 +462,7 @@
   function nextItem() {
     session.idx++;
     session.q = null;
+    session.picked = null;
     session.revealed = false;
     if (session.idx >= session.items.length) {
       renderSummary();
@@ -815,11 +820,19 @@
     if (!('speechSynthesis' in window)) h += '<p class="warn">這個瀏覽器不支援語音發音。</p>';
     h += '<p class="hint">若沒有澳式語音，會自動改用裝置上的其他英文語音。</p></section>';
 
+    var errCount = readErrors().length;
+    h += '<section class="card"><h2>問題回報</h2>' +
+      '<p class="hint">題目有問題時，作答後按「🚩 回報這題」。App 出錯時，按下面的按鈕複製錯誤紀錄，貼給開發者或到 GitHub 回報。</p>' +
+      '<p class="row">錯誤紀錄<span class="err-count">' + errCount + ' 筆</span></p>' +
+      '<div class="btn-row"><button class="btn" data-action="copy-errors">複製錯誤紀錄</button>' +
+      (errCount ? '<button class="btn" data-action="clear-errors">清除</button>' : '') + '</div>' +
+      '<a class="btn block" href="' + ISSUE_URL + '" target="_blank" rel="noopener">到 GitHub 回報問題</a></section>';
+
     h += '<section class="card"><h2>資料</h2><p class="hint">練習紀錄只存在這台裝置的瀏覽器，建議定期匯出備份。</p>';
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
     h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
     h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
-    h += '<p class="footer">多益練習 App v0.3 · 單字 ' + WORDS.length + ' 個 · 句型 ' + PHRASES.length + ' 句</p>';
+    h += '<p class="footer">多益練習 App v' + APP_VERSION + ' · 單字 ' + WORDS.length + ' 個 · 句型 ' + PHRASES.length + ' 句</p>';
     return h;
   }
 
@@ -991,7 +1004,75 @@
     }
     var card = w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
     return '<div class="feedback">' + head + card + '</div>' +
-      '<button class="btn primary block" data-action="next">下一題</button>';
+      '<button class="btn primary block" data-action="next">下一題</button>' +
+      '<button class="btn link report" data-action="report">🚩 這題怪怪的？回報這題</button>';
+  }
+
+  // ---------- 問題回報 ----------
+  function deviceInfo() {
+    return 'App 版本：v' + APP_VERSION + '\n裝置：' + navigator.userAgent +
+      '\n發音：' + (canSpeak ? state.settings.accent + '，可用語音 ' + voices.length + ' 個' : '不支援');
+  }
+
+  function reportText() {
+    var item = currentItem();
+    var q = session.q;
+    var it = getItem(item.id);
+    var lines = ['【題目回報】', '題型：' + MODE_LABEL[item.mode] + '（' + item.mode + '）', '項目：' + item.id];
+    if (item.mode === 'fill') lines.push('例句：' + it.examples[q.exIdx].en);
+    if (item.mode === 'p_reply') lines.push('對方說：' + it.q.en);
+    if (q && q.options) lines.push('選項：' + q.options.join(' / '));
+    if (session.picked) lines.push('我選的：' + session.picked);
+    if (item.mode === 'spell') lines.push('我的拼字：' + (session.spellInput || '（未作答）'));
+    if (item.mode === 'p_order') lines.push('我的排列：' + session.orderInput);
+    lines.push('正確答案：' + ((q && q.answer) || speechText(item.id)));
+    lines.push('', '哪裡怪怪的：（請寫在這裡）', '', deviceInfo());
+    return lines.join('\n');
+  }
+
+  function readErrors() {
+    try { return JSON.parse(localStorage.getItem(ERROR_KEY) || '[]'); } catch (e) { return []; }
+  }
+
+  function errorReportText() {
+    var errs = readErrors();
+    return ['【錯誤紀錄】', deviceInfo(), '', errs.length ? errs.map(function (e) {
+      return e.time + '  ' + e.msg + (e.src ? '  @ ' + e.src : '') + (e.stack ? '\n' + e.stack : '');
+    }).join('\n\n') : '（沒有錯誤紀錄）'].join('\n');
+  }
+
+  function toast(msg) {
+    var old = document.querySelector('.toast');
+    if (old) old.remove();
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 3000);
+  }
+
+  // 優先用剪貼簿 API；不支援時改用舊方法，再不行就跳出視窗讓使用者手動複製
+  function copyText(text, okMsg) {
+    var fallback = function () {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { /* 不支援 */ }
+      ta.remove();
+      if (ok) toast(okMsg);
+      else window.prompt('請長按複製以下內容：', text);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fallback);
+    } else {
+      fallback();
+    }
   }
 
   function renderSummary() {
@@ -1100,6 +1181,12 @@
       case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
       case 'give-up': session.spellInput = ''; answer('wrong'); break;
       case 'export': exportData(); break;
+      case 'report': copyText(reportText(), '已複製題目資訊，貼給開發者就可以了'); break;
+      case 'copy-errors': copyText(errorReportText(), '已複製錯誤紀錄'); break;
+      case 'clear-errors':
+        try { localStorage.removeItem(ERROR_KEY); } catch (err) { /* 儲存空間不可用 */ }
+        render();
+        break;
       case 'reset':
         if (confirm('確定要清除所有練習紀錄嗎？這個動作無法復原。')) {
           state = defaultState();

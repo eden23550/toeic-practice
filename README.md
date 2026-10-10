@@ -31,6 +31,21 @@ python3 -m http.server 8000
 
 然後開啟 <http://localhost:8000>。也可以直接用瀏覽器打開 `index.html`，但這樣無法離線使用。
 
+## 回報問題
+
+- **題目有問題**（兩個選項都對、例句怪怪的）：作答後按「🚩 這題怪怪的？回報這題」，App 會自動複製題目資訊。
+- **App 出錯**：到「設定 → 問題回報」按「複製錯誤紀錄」。
+- 把複製的內容傳給開發者，或到 [GitHub Issues](https://github.com/eden23550/toeic-practice/issues/new/choose) 開一張單。
+
+## 測試
+
+```bash
+npm install
+npm test            # 資料檢查 + 版本號檢查 + 瀏覽器流程測試
+```
+
+每個 Pull Request 都會由 GitHub Actions 自動執行測試，沒通過會顯示紅燈。
+
 ## 專案結構
 
 ```
@@ -42,6 +57,8 @@ js/app.js             App 邏輯：複習排程、題目、紀錄、畫面
 sw.js                 Service worker（離線快取）
 manifest.webmanifest  PWA 設定
 docs/requirements.md  需求文件
+tests/                自動測試
+CLAUDE.md             開發規則（給 AI 助手與開發者）
 ```
 
 ## 新增單字
@@ -55,6 +72,6 @@ docs/requirements.md  需求文件
 ]],
 ```
 
-干擾選項放進每個例句都必須說不通，避免一題出現兩個正確答案。修改後請更新 `sw.js` 裡的 `CACHE` 版本號，讓已安裝的使用者拿到新版。
+干擾選項放進每個例句都必須說不通，避免一題出現兩個正確答案。修改後請同時更新 `js/app.js` 的 `APP_VERSION` 和 `sw.js` 的 `CACHE` 版本號，讓已安裝的使用者拿到新版，並執行 `npm test`。
 
 練習紀錄存在瀏覽器裡，換手機或清除瀏覽器資料前，請先到「設定」匯出備份。

@@ -421,3 +421,22 @@ select, .search, .spell-form input {
 .summary h1 { margin-bottom: 20px; }
 .summary-emoji { font-size: 3.5rem; }
 .summary .card { text-align: left; }
+
+/* 問題回報 */
+.btn.link.report { font-size: 0.85rem; margin-top: 4px; }
+.err-count { color: var(--muted); }
+a.btn { color: inherit; }
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+}

@@ -12,6 +12,27 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="多益單字">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // 記錄執行時發生的錯誤，可以在「設定 → 問題回報」複製給開發者。
+    // 放在所有程式之前，才能連載入單字庫時的錯誤也抓到。
+    (function () {
+      var KEY = 'toeic-practice-errors';
+      function log(msg, src, stack) {
+        try {
+          var list = JSON.parse(localStorage.getItem(KEY) || '[]');
+          list.push({ time: new Date().toISOString(), msg: String(msg).slice(0, 300), src: src || '', stack: String(stack || '').slice(0, 600) });
+          localStorage.setItem(KEY, JSON.stringify(list.slice(-20)));
+        } catch (e) { /* 儲存空間不可用 */ }
+      }
+      window.addEventListener('error', function (e) {
+        log(e.message, (e.filename || '').split('/').pop() + ':' + e.lineno + ':' + e.colno, e.error && e.error.stack);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        log('Unhandled promise: ' + (r && r.message ? r.message : r), '', r && r.stack);
+      });
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>

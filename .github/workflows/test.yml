@@ -1,0 +1,42 @@
+name: 測試
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 版本號檢查需要比對目標分支
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 資料檢查
+        run: npm run test:data
+
+      - name: 版本號檢查
+        run: node tests/check-version.js ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+
+      - name: 安裝瀏覽器
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E 測試
+        run: npm run test:e2e
+
+      - name: 上傳失敗時的畫面截圖
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: e2e-failure.png
+          if-no-files-found: ignore
