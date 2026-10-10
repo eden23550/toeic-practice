@@ -166,37 +166,46 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       results.forEach(([correct, judged]) => expect(correct === judged, `排${correct ? '對' : '錯'}卻判成${judged ? '對' : '錯'}`));
     });
 
-    // 回報視窗：確認已複製、表單連結正確，並可關閉
-    async function checkReportSheet(mustInclude) {
-      await page.waitForSelector('.sheet-status:has-text("已複製")');
+    // 回報視窗：確認表單連結帶入了正確的回報類型、資訊與裝置，手動複製可用，並可關閉
+    const FORM_FIELDS = { type: 'entry.1300635232', info: 'entry.441789377', device: 'entry.1426037231' };
+    async function checkReportSheet(type, mustInclude) {
+      await page.waitForSelector('.sheet');
+      const url = new URL(await page.getAttribute('.sheet a.btn', 'href'));
+      expect(url.hostname === 'docs.google.com' && url.pathname.startsWith('/forms/'), '回報表單連結不正確：' + url);
+      expect(url.searchParams.get(FORM_FIELDS.type) === type, `回報類型應該是「${type}」，實際是「${url.searchParams.get(FORM_FIELDS.type)}」`);
+      const info = url.searchParams.get(FORM_FIELDS.info) || '';
+      mustInclude.forEach((t) => expect(info.includes(t), `表單資訊缺少「${t}」：` + info.slice(0, 80)));
+      expect((url.searchParams.get(FORM_FIELDS.device) || '').includes('App 版本'), '表單應該帶入 App 版本與裝置');
+      expect(url.href.length < 8000, '表單網址太長：' + url.href.length);
+      await page.click('.sheet-raw summary');
+      await page.click('[data-copy-raw]');
+      await page.waitForSelector('[data-copy-raw]:has-text("已複製")');
       const clip = await page.evaluate(() => navigator.clipboard.readText());
-      mustInclude.forEach((t) => expect(clip.includes(t), `剪貼簿內容缺少「${t}」：` + clip.slice(0, 80)));
-      const href = await page.getAttribute('.sheet a.btn', 'href');
-      expect(/^https:\/\/docs\.google\.com\/forms\//.test(href), '回報表單連結不正確：' + href);
+      expect(clip.includes('App 版本'), '手動複製的內容應該包含裝置資訊');
       await page.click('.sheet button[data-close-sheet]');
       await page.waitForSelector('.sheet-backdrop', { state: 'detached' });
     }
 
-    await step('回報這題：複製題目資訊並提供表單連結', async () => {
+    await step('回報這題：表單自動帶入題目資訊', async () => {
       await page.click('[data-tab="home"]');
       await page.selectOption('#free-mode', 'fill');
       await page.click('[data-action="start-free"]');
       await answerCurrent();
       await page.click('[data-action="report"]');
-      await checkReportSheet(['【題目回報】', '選項：', 'App 版本']);
+      await checkReportSheet('題目有問題', ['【題目回報】', '選項：', '正確答案：']);
       await page.click('[data-action="next"]');
       await page.click('[data-action="exit"]');
     });
 
-    await step('錯誤紀錄：抓到錯誤並可在設定複製', async () => {
+    await step('錯誤紀錄：抓到錯誤並可帶入回報表單', async () => {
       await page.evaluate(() => setTimeout(() => { throw new Error('e2e-test-error'); }));
       await page.waitForTimeout(100);
       await page.click('[data-tab="settings"]');
       expect((await text('.err-count')) === '1 筆', '應該記錄到 1 筆錯誤');
       await page.click('[data-action="copy-errors"]');
-      await checkReportSheet(['【錯誤紀錄】', 'e2e-test-error']);
+      await checkReportSheet('App 出錯', ['【錯誤紀錄】', 'e2e-test-error']);
       await page.click('[data-action="report-general"]');
-      await checkReportSheet(['【一般回報】', 'App 版本']);
+      await checkReportSheet(null, []);
       await page.click('[data-action="clear-errors"]');
       expect((await text('.err-count')) === '0 筆', '清除後應該是 0 筆');
     });
