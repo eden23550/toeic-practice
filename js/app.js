@@ -1,0 +1,876 @@
+(function () {
+  'use strict';
+
+  var WORDS = window.TOEIC_WORDS;
+  var CATS = window.TOEIC_CATEGORIES;
+  var WORD_BY_ID = {};
+  WORDS.forEach(function (w) { WORD_BY_ID[w.id] = w; });
+
+  var STORE_KEY = 'toeic-practice-v1';
+  // 各記憶等級答對後的下次複習間隔（天）
+  var INTERVALS = [0, 1, 3, 7, 14, 30, 60];
+  var MAX_LEVEL = INTERVALS.length - 1;
+  var MISTAKE_CLEAR_STREAK = 2;
+
+  var STATUS = {
+    new: { label: '未學', cls: 'st-new' },
+    learning: { label: '學習中', cls: 'st-learning' },
+    familiar: { label: '熟悉', cls: 'st-familiar' },
+    mastered: { label: '精熟', cls: 'st-mastered' },
+  };
+
+  var MODE_LABEL = {
+    en2zh: '英選中', zh2en: '中選英', fill: '例句填空', spell: '拼字', card: '單字卡',
+  };
+
+  // ---------- 工具函式 ----------
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function dateStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function today() { return dateStr(new Date()); }
+  function addDays(str, n) {
+    var p = str.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + n);
+    return dateStr(d);
+  }
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function pct(a, b) { return b ? Math.round((a / b) * 100) : 0; }
+  function mainPos(w) { return w.pos.split('/')[0]; }
+  function exHtml(w) {
+    return esc(w.ex).replace(/\[(.+?)\]/, '<mark>$1</mark>');
+  }
+  function exBlank(w) {
+    return esc(w.ex).replace(/\[(.+?)\]/, '<span class="blank">_____</span>');
+  }
+  function normalize(s) { return s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[’‘]/g, "'"); }
+
+  // ---------- 資料儲存 ----------
+  function defaultState() {
+    return {
+      settings: { dailyNew: 15, accent: 'en-US', rate: 0.9, autoSpeak: true },
+      words: {},
+      daily: {},
+    };
+  }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return defaultState();
+      var s = JSON.parse(raw);
+      var d = defaultState();
+      s.settings = Object.assign(d.settings, s.settings || {});
+      s.words = s.words || {};
+      s.daily = s.daily || {};
+      return s;
+    } catch (e) {
+      return defaultState();
+    }
+  }
+
+  var state = loadState();
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* 儲存空間不可用 */ }
+  }
+
+  function dayRec(date) {
+    var d = date || today();
+    if (!state.daily[d]) state.daily[d] = { newCount: 0, answered: 0, correct: 0, wrong: 0 };
+    return state.daily[d];
+  }
+
+  function statusOf(id) {
+    var r = state.words[id];
+    if (!r || r.level < 1) return 'new';
+    if (r.level <= 2) return 'learning';
+    if (r.level <= 4) return 'familiar';
+    return 'mastered';
+  }
+
+  function isLearned(id) {
+    var r = state.words[id];
+    return !!r && r.level >= 1;
+  }
+
+  function introduce(id) {
+    var existing = state.words[id];
+    if (existing) {
+      // 自由練習時碰過但尚未正式學習的字
+      if (!existing.intro && existing.level === 0) { existing.intro = true; dayRec().newCount++; save(); }
+      return;
+    }
+    state.words[id] = { level: 0, intro: true, due: today(), correct: 0, wrong: 0, mistake: false, mistakeStreak: 0, lastWrong: null };
+    dayRec().newCount++;
+    save();
+  }
+
+  // result: 'correct' | 'fuzzy' | 'wrong'；schedule 決定是否影響複習排程
+  function record(id, result, schedule) {
+    var r = state.words[id];
+    if (!r) {
+      r = state.words[id] = { level: 0, due: today(), correct: 0, wrong: 0, mistake: false, mistakeStreak: 0, lastWrong: null };
+    }
+    var day = dayRec();
+    day.answered++;
+    if (result === 'correct') { r.correct++; day.correct++; }
+    if (result === 'wrong') { r.wrong++; day.wrong++; }
+
+    if (schedule) {
+      if (result === 'correct') {
+        r.level = Math.min(r.level + 1, MAX_LEVEL);
+        r.due = addDays(today(), INTERVALS[r.level]);
+      } else if (result === 'fuzzy') {
+        r.level = Math.max(1, r.level);
+        r.due = addDays(today(), 1);
+      } else {
+        r.level = 1;
+        r.due = addDays(today(), 1);
+      }
+    }
+
+    if (result === 'wrong' || result === 'fuzzy') {
+      r.mistake = true;
+      r.mistakeStreak = 0;
+      if (result === 'wrong') r.lastWrong = today();
+    } else if (r.mistake) {
+      r.mistakeStreak++;
+      if (r.mistakeStreak >= MISTAKE_CLEAR_STREAK) r.mistake = false;
+    }
+    save();
+  }
+
+  // ---------- 發音 ----------
+  var voices = [];
+  function loadVoices() {
+    if (!('speechSynthesis' in window)) return;
+    voices = window.speechSynthesis.getVoices();
+  }
+  if ('speechSynthesis' in window) {
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+  function pickVoice(lang) {
+    var norm = function (s) { return s.replace('_', '-').toLowerCase(); };
+    var exact = voices.filter(function (v) { return norm(v.lang) === lang.toLowerCase(); });
+    if (exact.length) return exact[0];
+    var en = voices.filter(function (v) { return norm(v.lang).indexOf('en') === 0; });
+    return en[0] || null;
+  }
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = state.settings.accent;
+    u.rate = state.settings.rate;
+    var v = pickVoice(state.settings.accent);
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }
+  function speakBtn(text, big) {
+    return '<button class="speak' + (big ? ' big' : '') + '" data-speak="' + esc(text) + '" aria-label="發音">🔊</button>';
+  }
+
+  // ---------- 題目產生 ----------
+  function distractors(word, field, n) {
+    var used = {};
+    used[word[field]] = true;
+    // 排除中文意思相同或重疊的字，避免出現兩個正確答案
+    var zhParts = word.zh.split('；');
+    var usable = WORDS.filter(function (w) {
+      return w.id !== word.id && !w.zh.split('；').some(function (p) { return zhParts.indexOf(p) >= 0; });
+    });
+    var samePos = shuffle(usable.filter(function (w) { return mainPos(w) === mainPos(word); }));
+    var others = shuffle(usable.filter(function (w) { return mainPos(w) !== mainPos(word); }));
+    var out = [];
+    samePos.concat(others).some(function (w) {
+      if (!used[w[field]]) { used[w[field]] = true; out.push(w[field]); }
+      return out.length >= n;
+    });
+    return out;
+  }
+
+  function makeQuestion(id, mode) {
+    var w = WORD_BY_ID[id];
+    var q = { id: id, mode: mode };
+    if (mode === 'en2zh') {
+      q.options = shuffle([w.zh].concat(distractors(w, 'zh', 3)));
+      q.answer = w.zh;
+    } else if (mode === 'zh2en' || mode === 'fill') {
+      q.options = shuffle([w.word].concat(distractors(w, 'word', 3)));
+      q.answer = w.word;
+    }
+    return q;
+  }
+
+  function reviewMode(id) {
+    var r = state.words[id];
+    var lv = r ? r.level : 1;
+    var modes;
+    if (lv <= 1) modes = ['en2zh', 'card', 'zh2en'];
+    else if (lv === 2) modes = ['zh2en', 'fill', 'en2zh'];
+    else modes = ['fill', 'spell', 'zh2en', 'card'];
+    return modes[Math.floor(Math.random() * modes.length)];
+  }
+
+  // ---------- 學習清單 ----------
+  function dueWords() {
+    var t = today();
+    return WORDS.filter(function (w) {
+      var r = state.words[w.id];
+      return r && r.level >= 1 && r.due <= t;
+    }).map(function (w) { return w.id; });
+  }
+
+  function unseenWords() {
+    return WORDS.filter(function (w) { var r = state.words[w.id]; return !r || (r.level === 0 && !r.intro); })
+      .sort(function (a, b) { return a.lvl - b.lvl || a.order - b.order || a.catIndex - b.catIndex; })
+      .map(function (w) { return w.id; });
+  }
+
+  // 已介紹但尚未完成第一次測驗的字（例如學到一半離開）
+  function pendingNewWords() {
+    return WORDS.filter(function (w) {
+      var r = state.words[w.id];
+      return r && r.level === 0 && r.intro;
+    }).map(function (w) { return w.id; });
+  }
+
+  function newQuota() {
+    return Math.max(0, state.settings.dailyNew - dayRec().newCount);
+  }
+
+  function mistakeWords() {
+    return WORDS.filter(function (w) { var r = state.words[w.id]; return r && r.mistake; })
+      .sort(function (a, b) {
+        var ra = state.words[a.id], rb = state.words[b.id];
+        return (rb.lastWrong || '').localeCompare(ra.lastWrong || '');
+      })
+      .map(function (w) { return w.id; });
+  }
+
+  function streak() {
+    var n = 0;
+    var d = today();
+    if (!(state.daily[d] && state.daily[d].answered)) d = addDays(d, -1);
+    while (state.daily[d] && state.daily[d].answered) {
+      n++;
+      d = addDays(d, -1);
+    }
+    return n;
+  }
+
+  // ---------- 練習流程 ----------
+  var session = null;
+  var currentTab = 'home';
+  var libFilter = { cat: 'all', q: '' };
+
+  // 每個 item: { type: 'intro' | 'quiz', id, mode, retry }
+  function buildNewItems(ids) {
+    var items = [];
+    for (var i = 0; i < ids.length; i += 5) {
+      var group = ids.slice(i, i + 5);
+      group.forEach(function (id) { items.push({ type: 'intro', id: id }); });
+      shuffle(group).forEach(function (id) {
+        items.push({ type: 'quiz', id: id, mode: Math.random() < 0.5 ? 'en2zh' : 'zh2en', first: true });
+      });
+    }
+    return items;
+  }
+
+  function startDaily(extraNew) {
+    var reviews = shuffle(dueWords()).map(function (id) {
+      return { type: 'quiz', id: id, mode: reviewMode(id) };
+    });
+    var pending = pendingNewWords();
+    var count = extraNew != null ? extraNew : newQuota();
+    var fresh = pending.concat(unseenWords().slice(0, Math.max(0, count - pending.length)));
+    if (extraNew != null) reviews = [];
+    var items = reviews.concat(buildNewItems(fresh));
+    startSession('daily', items, true, extraNew != null ? '加碼學習' : '今日學習');
+  }
+
+  function startMistakes() {
+    var ids = shuffle(mistakeWords()).slice(0, 15);
+    var items = ids.map(function (id) {
+      var modes = ['en2zh', 'zh2en', 'fill', 'spell'];
+      return { type: 'quiz', id: id, mode: modes[Math.floor(Math.random() * modes.length)] };
+    });
+    startSession('mistakes', items, false, '生字本練習');
+  }
+
+  function startFree(cat, mode, count, onlyLearned) {
+    var pool = WORDS.filter(function (w) {
+      if (cat !== 'all' && w.cat !== cat) return false;
+      if (onlyLearned && !isLearned(w.id)) return false;
+      return true;
+    });
+    var ids = shuffle(pool.map(function (w) { return w.id; })).slice(0, count);
+    var modes = ['en2zh', 'zh2en', 'fill', 'spell'];
+    var items = ids.map(function (id) {
+      return { type: 'quiz', id: id, mode: mode === 'mixed' ? modes[Math.floor(Math.random() * modes.length)] : mode };
+    });
+    startSession('free', items, false, '自由練習');
+  }
+
+  function startSession(kind, items, schedule, title) {
+    if (!items.length) return;
+    session = {
+      kind: kind, title: title, items: items, idx: 0, schedule: schedule,
+      answered: {}, correct: 0, wrong: 0, wrongIds: [], q: null, revealed: false,
+    };
+    renderSession();
+  }
+
+  function currentItem() { return session.items[session.idx]; }
+
+  function nextItem() {
+    session.idx++;
+    session.q = null;
+    session.revealed = false;
+    if (session.idx >= session.items.length) {
+      renderSummary();
+    } else {
+      renderSession();
+    }
+  }
+
+  function answer(result) {
+    var item = currentItem();
+    var firstTry = !session.answered[item.id];
+    if (firstTry) {
+      session.answered[item.id] = true;
+      if (result === 'correct') session.correct++;
+      else {
+        session.wrong++;
+        if (session.wrongIds.indexOf(item.id) < 0) session.wrongIds.push(item.id);
+      }
+      record(item.id, result, session.schedule);
+    } else if (result === 'correct') {
+      // 重考答對：只更新今日作答量
+      dayRec().answered++;
+      save();
+    }
+    // 答錯就在本輪稍後再考一次
+    if (result !== 'correct' && !item.retry && session.kind !== 'free') {
+      var pos = Math.min(session.items.length, session.idx + 4);
+      session.items.splice(pos, 0, { type: 'quiz', id: item.id, mode: 'en2zh', retry: true });
+    }
+    session.revealed = true;
+    session.lastResult = result;
+    renderSession();
+    if (state.settings.autoSpeak) speak(WORD_BY_ID[item.id].word);
+  }
+
+  function exitSession() {
+    session = null;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    render();
+  }
+
+  // ---------- 畫面 ----------
+  var $app = document.getElementById('app');
+
+  function render() {
+    if (session) { renderSession(); return; }
+    var body = '';
+    if (currentTab === 'home') body = viewHome();
+    else if (currentTab === 'library') body = viewLibrary();
+    else if (currentTab === 'mistakes') body = viewMistakes();
+    else if (currentTab === 'stats') body = viewStats();
+    else if (currentTab === 'settings') body = viewSettings();
+    $app.innerHTML = '<main class="page">' + body + '</main>' + navBar();
+    if (currentTab === 'library') bindLibrarySearch();
+  }
+
+  function navBar() {
+    var tabs = [
+      ['home', '🏠', '今日'], ['library', '📚', '單字庫'], ['mistakes', '📝', '生字本'],
+      ['stats', '📊', '統計'], ['settings', '⚙️', '設定'],
+    ];
+    return '<nav class="tabbar">' + tabs.map(function (t) {
+      return '<button class="tab' + (currentTab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '">' +
+        '<span class="tab-icon">' + t[1] + '</span><span>' + t[2] + '</span></button>';
+    }).join('') + '</nav>';
+  }
+
+  function viewHome() {
+    var due = dueWords().length;
+    var pending = pendingNewWords().length;
+    var quota = Math.max(newQuota(), pending);
+    var remainNew = Math.min(quota, unseenWords().length + pending);
+    var day = dayRec();
+    var learned = WORDS.filter(function (w) { return isLearned(w.id); }).length;
+    var total = due + remainNew;
+
+    var h = '<header class="hero"><h1>多益單字練習</h1><p class="sub">為出國溝通打好單字基礎</p></header>';
+    h += '<section class="card today">';
+    h += '<div class="today-row"><div class="big-num">' + due + '</div><div>個字要複習</div></div>';
+    h += '<div class="today-row"><div class="big-num">' + remainNew + '</div><div>個新字</div></div>';
+    if (total > 0) {
+      h += '<button class="btn primary block" data-action="start-daily">開始今日學習</button>';
+    } else {
+      h += '<p class="done-msg">🎉 今天的任務都完成了！</p>';
+      if (unseenWords().length) h += '<button class="btn block" data-action="extra">再學 5 個新字</button>';
+    }
+    h += '</section>';
+
+    h += '<section class="tiles">';
+    h += tile('🔥', streak() + ' 天', '連續練習');
+    h += tile('✅', day.answered + ' 題', '今日作答');
+    h += tile('🎯', (day.correct + day.wrong ? pct(day.correct, day.correct + day.wrong) + '%' : '–'), '今日正確率');
+    h += tile('📖', learned + ' / ' + WORDS.length, '已學單字');
+    h += '</section>';
+
+    h += '<section class="card"><h2>自由練習</h2><p class="hint">自選分類與題型，不影響複習排程。</p>';
+    h += '<div class="form-grid">';
+    h += '<label>分類<select id="free-cat"><option value="all">全部分類</option>' +
+      CATS.map(function (c) { return '<option value="' + c.id + '">' + c.icon + ' ' + c.name + '</option>'; }).join('') + '</select></label>';
+    h += '<label>題型<select id="free-mode"><option value="mixed">綜合</option>' +
+      ['en2zh', 'zh2en', 'fill', 'spell'].map(function (m) { return '<option value="' + m + '">' + MODE_LABEL[m] + '</option>'; }).join('') + '</select></label>';
+    h += '<label>題數<select id="free-count"><option>10</option><option>20</option><option>30</option></select></label>';
+    h += '<label>範圍<select id="free-scope"><option value="learned">已學過的字</option><option value="all">所有單字</option></select></label>';
+    h += '</div><button class="btn block" data-action="start-free">開始練習</button></section>';
+    return h;
+  }
+
+  function tile(icon, value, label) {
+    return '<div class="tile"><div class="tile-icon">' + icon + '</div><div class="tile-value">' + value +
+      '</div><div class="tile-label">' + label + '</div></div>';
+  }
+
+  function viewLibrary() {
+    var h = '<header class="page-head"><h1>單字庫</h1></header>';
+    h += '<input id="lib-search" class="search" type="search" placeholder="搜尋英文或中文…" value="' + esc(libFilter.q) + '">';
+    h += '<div class="chips">' + chip('all', '全部') + CATS.map(function (c) { return chip(c.id, c.icon + ' ' + c.name); }).join('') + '</div>';
+    h += '<div id="lib-list">' + libraryList() + '</div>';
+    return h;
+  }
+
+  function chip(id, label) {
+    return '<button class="chip' + (libFilter.cat === id ? ' active' : '') + '" data-cat="' + id + '">' + label + '</button>';
+  }
+
+  function libraryList() {
+    var q = normalize(libFilter.q);
+    var list = WORDS.filter(function (w) {
+      if (libFilter.cat !== 'all' && w.cat !== libFilter.cat) return false;
+      if (!q) return true;
+      return w.word.toLowerCase().indexOf(q) >= 0 || w.zh.indexOf(libFilter.q.trim()) >= 0;
+    });
+    if (!list.length) return '<p class="empty">找不到符合的單字</p>';
+    return '<p class="hint">共 ' + list.length + ' 個字</p><ul class="word-list">' + list.map(wordRow).join('') + '</ul>';
+  }
+
+  function wordRow(w) {
+    var st = STATUS[statusOf(w.id)];
+    return '<li class="word-item"><details><summary>' +
+      '<div class="wi-main"><span class="wi-word">' + esc(w.word) + '</span> <span class="kk">[' + esc(w.kk) + ']</span>' +
+      '<div class="wi-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</div></div>' +
+      '<span class="badge ' + st.cls + '">' + st.label + '</span>' + speakBtn(w.word) +
+      '</summary>' + wordDetail(w) + '</details></li>';
+  }
+
+  function wordDetail(w) {
+    var stars = '★★★'.slice(0, w.lvl) + '☆☆☆'.slice(0, 3 - w.lvl);
+    return '<div class="detail">' +
+      '<p class="ex">' + exHtml(w) + ' ' + speakBtn(w.ex.replace(/[\[\]]/g, '')) + '</p>' +
+      '<p class="ex-zh">' + esc(w.exZh) + '</p>' +
+      '<p class="col">常用搭配：<b>' + esc(w.col) + '</b></p>' +
+      '<p class="lvl">難度 <span class="stars">' + stars + '</span></p></div>';
+  }
+
+  function bindLibrarySearch() {
+    var input = document.getElementById('lib-search');
+    input.addEventListener('input', function () {
+      libFilter.q = input.value;
+      document.getElementById('lib-list').innerHTML = libraryList();
+    });
+  }
+
+  function viewMistakes() {
+    var ids = mistakeWords();
+    var h = '<header class="page-head"><h1>生字本</h1></header>';
+    h += '<p class="hint">答錯或標記「模糊」的字會自動加入，在生字本練習中連續答對 ' + MISTAKE_CLEAR_STREAK + ' 次就會移出。</p>';
+    if (!ids.length) return h + '<p class="empty">目前沒有生字，繼續保持！</p>';
+    h += '<button class="btn primary block" data-action="start-mistakes">練習生字本（' + Math.min(15, ids.length) + ' 題）</button>';
+    h += '<ul class="word-list">' + ids.map(function (id) {
+      var w = WORD_BY_ID[id];
+      var r = state.words[id];
+      return '<li class="word-item"><details><summary>' +
+        '<div class="wi-main"><span class="wi-word">' + esc(w.word) + '</span> <span class="kk">[' + esc(w.kk) + ']</span>' +
+        '<div class="wi-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</div></div>' +
+        '<span class="badge st-wrong">錯 ' + r.wrong + '</span>' + speakBtn(w.word) +
+        '</summary>' + wordDetail(w) +
+        '<button class="btn small" data-remove-mistake="' + esc(id) + '">移出生字本</button></details></li>';
+    }).join('') + '</ul>';
+    return h;
+  }
+
+  function viewStats() {
+    var counts = { new: 0, learning: 0, familiar: 0, mastered: 0 };
+    WORDS.forEach(function (w) { counts[statusOf(w.id)]++; });
+    var totalC = 0, totalW = 0;
+    Object.keys(state.words).forEach(function (id) { totalC += state.words[id].correct; totalW += state.words[id].wrong; });
+
+    var h = '<header class="page-head"><h1>練習紀錄</h1></header>';
+    h += '<section class="tiles">';
+    h += tile('🔥', streak() + ' 天', '連續練習');
+    h += tile('🎯', totalC + totalW ? pct(totalC, totalC + totalW) + '%' : '–', '總正確率');
+    h += tile('🧠', counts.familiar + counts.mastered, '熟悉以上');
+    h += tile('🏆', counts.mastered, '精熟');
+    h += '</section>';
+
+    // 學習狀態分布
+    h += '<section class="card"><h2>單字掌握度</h2><div class="stack-bar">';
+    ['mastered', 'familiar', 'learning', 'new'].forEach(function (k) {
+      if (counts[k]) h += '<div class="seg ' + STATUS[k].cls + '" style="flex:' + counts[k] + '"></div>';
+    });
+    h += '</div><div class="legend">';
+    ['mastered', 'familiar', 'learning', 'new'].forEach(function (k) {
+      h += '<span><i class="dot ' + STATUS[k].cls + '"></i>' + STATUS[k].label + ' ' + counts[k] + '</span>';
+    });
+    h += '</div></section>';
+
+    // 近 14 天
+    var days = [];
+    for (var i = 13; i >= 0; i--) days.push(addDays(today(), -i));
+    var max = Math.max.apply(null, days.map(function (d) { return state.daily[d] ? state.daily[d].answered : 0; }).concat([1]));
+    h += '<section class="card"><h2>近 14 天作答量</h2><div class="bars">';
+    days.forEach(function (d) {
+      var n = state.daily[d] ? state.daily[d].answered : 0;
+      h += '<div class="bar-col" title="' + d + '：' + n + ' 題"><div class="bar-val">' + (n || '') + '</div>' +
+        '<div class="bar" style="height:' + Math.round((n / max) * 100) + '%"></div>' +
+        '<div class="bar-label">' + (+d.slice(8)) + '</div></div>';
+    });
+    h += '</div></section>';
+
+    // 各分類
+    h += '<section class="card"><h2>各分類表現</h2><p class="hint">正確率低的分類就是需要加強的情境。</p><ul class="cat-stats">';
+    CATS.forEach(function (c) {
+      var learned = 0, cc = 0, cw = 0;
+      c.words.forEach(function (w) {
+        var r = state.words[w[0]];
+        if (r) { cc += r.correct; cw += r.wrong; }
+        if (isLearned(w[0])) learned++;
+      });
+      var acc = cc + cw ? pct(cc, cc + cw) + '%' : '–';
+      h += '<li><div class="cs-head"><span>' + c.icon + ' ' + c.name + '</span><span class="cs-num">' +
+        learned + '/' + c.words.length + ' · 正確率 ' + acc + '</span></div>' +
+        '<div class="progress"><div style="width:' + pct(learned, c.words.length) + '%"></div></div></li>';
+    });
+    h += '</ul></section>';
+    return h;
+  }
+
+  function viewSettings() {
+    var s = state.settings;
+    var h = '<header class="page-head"><h1>設定</h1></header>';
+    h += '<section class="card"><h2>學習</h2>';
+    h += '<label class="row">每日新字數量<select id="set-daily">' + [5, 10, 15, 20, 25, 30, 40, 50].map(function (n) {
+      return '<option' + (n === s.dailyNew ? ' selected' : '') + '>' + n + '</option>';
+    }).join('') + '</select></label></section>';
+
+    h += '<section class="card"><h2>發音</h2>';
+    h += '<label class="row">口音<select id="set-accent">' + [['en-US', '美式'], ['en-AU', '澳式'], ['en-GB', '英式']].map(function (a) {
+      return '<option value="' + a[0] + '"' + (a[0] === s.accent ? ' selected' : '') + '>' + a[1] + '</option>';
+    }).join('') + '</select></label>';
+    h += '<label class="row">語速<select id="set-rate">' + [[0.7, '慢'], [0.9, '標準'], [1, '正常']].map(function (a) {
+      return '<option value="' + a[0] + '"' + (a[0] === s.rate ? ' selected' : '') + '>' + a[1] + '</option>';
+    }).join('') + '</select></label>';
+    h += '<label class="row">答題後自動發音<input type="checkbox" id="set-auto"' + (s.autoSpeak ? ' checked' : '') + '></label>';
+    h += '<button class="btn small" data-speak="Welcome to Australia. Nice to meet you.">試聽</button>';
+    if (!('speechSynthesis' in window)) h += '<p class="warn">這個瀏覽器不支援語音發音。</p>';
+    h += '<p class="hint">若沒有澳式語音，會自動改用裝置上的其他英文語音。</p></section>';
+
+    h += '<section class="card"><h2>資料</h2><p class="hint">練習紀錄只存在這台裝置的瀏覽器，建議定期匯出備份。</p>';
+    h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
+    h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
+    h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
+    h += '<p class="footer">多益練習 App v0.1 · 單字 ' + WORDS.length + ' 個</p>';
+    return h;
+  }
+
+  // ---------- 練習畫面 ----------
+  function renderSession() {
+    var item = currentItem();
+    var w = WORD_BY_ID[item.id];
+    var progress = pct(session.idx, session.items.length);
+    var h = '<div class="session"><header class="session-head">' +
+      '<button class="icon-btn" data-action="exit" aria-label="離開">✕</button>' +
+      '<div class="progress thin"><div style="width:' + progress + '%"></div></div>' +
+      '<span class="count">' + (session.idx + 1) + '/' + session.items.length + '</span></header>';
+    h += '<main class="session-body">';
+
+    if (item.type === 'intro') {
+      h += '<p class="tag new-tag">新單字</p>' + wordCard(w) +
+        '<button class="btn primary block" data-action="next">記住了，下一個</button>';
+    } else {
+      if (!session.q) session.q = makeQuestion(item.id, item.mode);
+      h += quizHtml(w, item, session.q);
+    }
+    h += '</main></div>';
+    $app.innerHTML = h;
+
+    if (item.type === 'intro') introduce(item.id);
+    // 每題只在第一次顯示時自動發音
+    if (session.spokenIdx !== session.idx) {
+      session.spokenIdx = session.idx;
+      if (item.type === 'intro' && state.settings.autoSpeak) speak(w.word);
+      if (item.mode === 'spell') speak(w.word);
+    }
+
+    var input = document.getElementById('spell-input');
+    if (input && !session.revealed) input.focus();
+    var next = document.querySelector('[data-action="next"]');
+    if (next && session.revealed) next.focus();
+  }
+
+  function wordCard(w) {
+    return '<div class="word-card">' +
+      '<div class="wc-top"><h2 class="wc-word">' + esc(w.word) + '</h2>' + speakBtn(w.word, true) + '</div>' +
+      '<p class="kk">[' + esc(w.kk) + ']</p>' +
+      '<p class="wc-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</p>' +
+      wordDetail(w) + '</div>';
+  }
+
+  function quizHtml(w, item, q) {
+    var h = '<p class="tag">' + MODE_LABEL[item.mode] + (item.retry ? ' · 再試一次' : '') + '</p>';
+    var revealed = session.revealed;
+
+    if (item.mode === 'card') {
+      h += '<div class="prompt"><h2 class="prompt-word">' + esc(w.word) + '</h2>' + speakBtn(w.word, true) +
+        '<p class="kk">[' + esc(w.kk) + ']</p></div>';
+      if (!revealed && !session.cardShown) {
+        h += '<p class="hint center">先在心裡想想中文意思</p><button class="btn primary block" data-action="show-card">顯示答案</button>';
+      } else if (!revealed) {
+        h += '<div class="word-card compact"><p class="wc-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</p>' + wordDetail(w) + '</div>';
+        h += '<p class="hint center">你記得嗎？</p><div class="rate-row">' +
+          '<button class="btn rate-wrong" data-rate="wrong">不會</button>' +
+          '<button class="btn rate-fuzzy" data-rate="fuzzy">模糊</button>' +
+          '<button class="btn rate-correct" data-rate="correct">會</button></div>';
+      } else {
+        h += feedback(w);
+      }
+      return h;
+    }
+
+    if (item.mode === 'en2zh') {
+      h += '<div class="prompt"><h2 class="prompt-word">' + esc(w.word) + '</h2>' + speakBtn(w.word, true) +
+        '<p class="kk">[' + esc(w.kk) + ']</p></div><p class="hint center">選出正確的中文意思</p>';
+    } else if (item.mode === 'zh2en') {
+      h += '<div class="prompt"><h2 class="prompt-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</h2></div>' +
+        '<p class="hint center">選出正確的英文單字</p>';
+    } else if (item.mode === 'fill') {
+      h += '<div class="prompt"><p class="prompt-sentence">' + (revealed ? exHtml(w) : exBlank(w)) + '</p></div>' +
+        '<p class="hint center">選出最適合填入空格的字</p>';
+    } else if (item.mode === 'spell') {
+      var hint = w.word.split('').map(function (c, i) {
+        if (i === 0 || c === ' ' || c === '-') return c === ' ' ? '&nbsp;&nbsp;' : esc(c);
+        return '_';
+      }).join(' ');
+      h += '<div class="prompt"><h2 class="prompt-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</h2>' +
+        speakBtn(w.word, true) + '<p class="spell-hint">' + hint + '</p></div>';
+      if (!revealed) {
+        h += '<form class="spell-form" data-form="spell"><input id="spell-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="輸入英文拼字">' +
+          '<button class="btn primary" type="submit">確定</button></form>' +
+          '<button class="btn link" data-action="give-up">不知道，看答案</button>';
+      } else {
+        h += '<p class="your-answer">你的答案：<b>' + esc(session.spellInput || '（未作答）') + '</b></p>' + feedback(w);
+      }
+      return h;
+    }
+
+    h += '<div class="options">' + q.options.map(function (opt) {
+      var cls = 'option';
+      if (revealed) {
+        if (opt === q.answer) cls += ' right';
+        else if (opt === session.picked) cls += ' wrong';
+        else cls += ' dim';
+      }
+      return '<button class="' + cls + '" data-option="' + esc(opt) + '"' + (revealed ? ' disabled' : '') + '>' + esc(opt) + '</button>';
+    }).join('') + '</div>';
+    if (revealed) h += feedback(w);
+    return h;
+  }
+
+  function feedback(w) {
+    var r = session.lastResult;
+    var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
+      : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ 明天再複習</div>'
+        : '<div class="fb-head ng">✗ 答錯了，稍後會再考一次</div>';
+    if (session.kind === 'free' && r === 'wrong') head = '<div class="fb-head ng">✗ 答錯了，已加入生字本</div>';
+    return '<div class="feedback">' + head + wordCard(w) + '</div>' +
+      '<button class="btn primary block" data-action="next">下一題</button>';
+  }
+
+  function renderSummary() {
+    var s = session;
+    var total = s.correct + s.wrong;
+    var h = '<div class="session"><main class="session-body summary">';
+    h += '<div class="summary-emoji">' + (total && s.wrong === 0 ? '🏆' : '🎉') + '</div>';
+    h += '<h1>' + esc(s.title) + '完成！</h1>';
+    if (total) {
+      h += '<section class="tiles">' + tile('✅', s.correct, '答對') + tile('❌', s.wrong, '答錯') +
+        tile('🎯', pct(s.correct, total) + '%', '正確率') + tile('🔥', streak() + ' 天', '連續練習') + '</section>';
+    }
+    if (s.wrongIds.length) {
+      h += '<section class="card"><h2>需要加強的字</h2><ul class="word-list">' +
+        s.wrongIds.map(function (id) { return wordRow(WORD_BY_ID[id]); }).join('') + '</ul></section>';
+    }
+    h += '<button class="btn primary block" data-action="exit">回到首頁</button></main></div>';
+    $app.innerHTML = h;
+  }
+
+  // ---------- 事件 ----------
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('button, [data-tab]');
+    if (!t) return;
+
+    if (t.dataset.speak) {
+      e.preventDefault();
+      e.stopPropagation();
+      speak(t.dataset.speak);
+      return;
+    }
+    if (t.dataset.tab) {
+      currentTab = t.dataset.tab;
+      render();
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (t.dataset.cat) {
+      libFilter.cat = t.dataset.cat;
+      render();
+      return;
+    }
+    if (t.dataset.removeMistake) {
+      var r = state.words[t.dataset.removeMistake];
+      if (r) { r.mistake = false; save(); }
+      render();
+      return;
+    }
+    if (t.dataset.option != null && session && !session.revealed) {
+      session.picked = t.dataset.option;
+      answer(t.dataset.option === session.q.answer ? 'correct' : 'wrong');
+      return;
+    }
+    if (t.dataset.rate && session) {
+      answer(t.dataset.rate);
+      return;
+    }
+
+    switch (t.dataset.action) {
+      case 'start-daily': startDaily(); break;
+      case 'extra': startDaily(5); break;
+      case 'start-mistakes': startMistakes(); break;
+      case 'start-free': {
+        var cat = document.getElementById('free-cat').value;
+        var mode = document.getElementById('free-mode').value;
+        var count = +document.getElementById('free-count').value;
+        var onlyLearned = document.getElementById('free-scope').value === 'learned';
+        var hasLearned = WORDS.some(function (w) { return isLearned(w.id) && (cat === 'all' || w.cat === cat); });
+        if (onlyLearned && !hasLearned) {
+          alert('這個分類還沒有學過的字，請改選「所有單字」或先完成今日學習。');
+          return;
+        }
+        startFree(cat, mode, count, onlyLearned);
+        break;
+      }
+      case 'next': nextItem(); break;
+      case 'exit': exitSession(); break;
+      case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
+      case 'give-up': session.spellInput = ''; answer('wrong'); break;
+      case 'export': exportData(); break;
+      case 'reset':
+        if (confirm('確定要清除所有練習紀錄嗎？這個動作無法復原。')) {
+          state = defaultState();
+          save();
+          render();
+        }
+        break;
+    }
+  });
+
+  document.addEventListener('submit', function (e) {
+    if (e.target.dataset.form !== 'spell') return;
+    e.preventDefault();
+    var input = document.getElementById('spell-input');
+    var val = input.value;
+    if (!val.trim()) return;
+    var w = WORD_BY_ID[currentItem().id];
+    session.spellInput = val.trim();
+    answer(normalize(val) === normalize(w.word) ? 'correct' : 'wrong');
+  });
+
+  document.addEventListener('change', function (e) {
+    var id = e.target.id;
+    var s = state.settings;
+    if (id === 'set-daily') s.dailyNew = +e.target.value;
+    else if (id === 'set-accent') s.accent = e.target.value;
+    else if (id === 'set-rate') s.rate = +e.target.value;
+    else if (id === 'set-auto') s.autoSpeak = e.target.checked;
+    else if (id === 'import-file') { importData(e.target.files[0]); return; }
+    else return;
+    save();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!session || e.key !== 'Enter') return;
+    if (document.activeElement && document.activeElement.id === 'spell-input') return;
+    var next = document.querySelector('[data-action="next"]');
+    if (next) { e.preventDefault(); next.click(); }
+  });
+
+  function exportData() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'toeic-practice-' + today() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function importData(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!data || typeof data.words !== 'object' || typeof data.daily !== 'object') throw new Error('bad');
+        if (!confirm('匯入會覆蓋目前的紀錄，確定嗎？')) return;
+        var d = defaultState();
+        state = { settings: Object.assign(d.settings, data.settings || {}), words: data.words, daily: data.daily };
+        save();
+        alert('匯入成功！');
+        render();
+      } catch (err) {
+        alert('檔案格式不正確，無法匯入。');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- 啟動 ----------
+  render();
+
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* 離線功能不可用 */ });
+    });
+  }
+})();
