@@ -5,6 +5,15 @@
   var CATS = window.TOEIC_CATEGORIES;
   var WORD_BY_ID = {};
   WORDS.forEach(function (w) { WORD_BY_ID[w.id] = w; });
+  var PHRASES = window.PHRASES;
+  var SCENES = window.PHRASE_SCENES;
+  var PHRASE_BY_ID = {};
+  PHRASES.forEach(function (p) { PHRASE_BY_ID[p.id] = p; });
+
+  // 句型的 id 以 p: 開頭，學習紀錄和單字存在同一個地方，共用複習排程
+  function isPhrase(id) { return id.indexOf('p:') === 0; }
+  function getItem(id) { return isPhrase(id) ? PHRASE_BY_ID[id] : WORD_BY_ID[id]; }
+  function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
 
   var STORE_KEY = 'toeic-practice-v1';
   // 各記憶等級答對後的下次複習間隔（天）
@@ -21,7 +30,10 @@
 
   var MODE_LABEL = {
     en2zh: '英選中', zh2en: '中選英', fill: '詞性填空', spell: '拼字', card: '單字卡', listen: '聽力',
+    p_listen: '聽句子', p_zh2en: '中翻英', p_order: '句子重組', p_reply: '情境對話',
   };
+  var PHRASE_MODES = ['p_listen', 'p_zh2en', 'p_order', 'p_reply'];
+  var ORDER_MAX_WORDS = 10;
 
   // ---------- 工具函式 ----------
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -61,7 +73,7 @@
   // ---------- 資料儲存 ----------
   function defaultState() {
     return {
-      settings: { dailyNew: 15, accent: 'en-US', rate: 0.9, autoSpeak: true },
+      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true },
       words: {},
       daily: {},
     };
@@ -90,7 +102,7 @@
 
   function dayRec(date) {
     var d = date || today();
-    if (!state.daily[d]) state.daily[d] = { newCount: 0, answered: 0, correct: 0, wrong: 0 };
+    if (!state.daily[d]) state.daily[d] = { newCount: 0, newPhrases: 0, answered: 0, correct: 0, wrong: 0 };
     return state.daily[d];
   }
 
@@ -107,15 +119,21 @@
     return !!r && r.level >= 1;
   }
 
+  function countNew(id) {
+    var day = dayRec();
+    if (isPhrase(id)) day.newPhrases = (day.newPhrases || 0) + 1;
+    else day.newCount++;
+  }
+
   function introduce(id) {
     var existing = state.words[id];
     if (existing) {
       // 自由練習時碰過但尚未正式學習的字
-      if (!existing.intro && existing.level === 0) { existing.intro = true; dayRec().newCount++; save(); }
+      if (!existing.intro && existing.level === 0) { existing.intro = true; countNew(id); save(); }
       return;
     }
     state.words[id] = { level: 0, intro: true, due: today(), correct: 0, wrong: 0, mistake: false, mistakeStreak: 0, lastWrong: null };
-    dayRec().newCount++;
+    countNew(id);
     save();
   }
 
@@ -208,13 +226,58 @@
 
   // 有些字沒有詞性變化題、有些裝置不能發音，改用其他題型
   function resolveMode(id, mode) {
+    if (isPhrase(id)) {
+      var p = PHRASE_BY_ID[id];
+      if (mode === 'p_reply' && !p.q) return 'p_zh2en';
+      if (mode === 'p_order' && p.plain.split(' ').length > ORDER_MAX_WORDS) return 'p_zh2en';
+      if (mode === 'p_listen' && !canSpeak) return 'p_zh2en';
+      return mode;
+    }
     var w = WORD_BY_ID[id];
     if (mode === 'fill' && !w.forms.length) return 'zh2en';
     if (mode === 'listen' && !canSpeak) return 'en2zh';
     return mode;
   }
 
+  // 句型的干擾選項優先從同一個情境挑；情境對話題只用其他「回答」當選項
+  function phraseDistractors(p, field, n, repliesOnly) {
+    var ok = function (x) { return x.id !== p.id && (!repliesOnly || x.q); };
+    var same = shuffle(PHRASES.filter(function (x) { return ok(x) && x.scene === p.scene; }));
+    var other = shuffle(PHRASES.filter(function (x) { return ok(x) && x.scene !== p.scene; }));
+    var used = {};
+    used[p[field]] = true;
+    var out = [];
+    same.concat(other).some(function (x) {
+      if (!used[x[field]]) { used[x[field]] = true; out.push(x[field]); }
+      return out.length >= n;
+    });
+    return out;
+  }
+
+  function makePhraseQuestion(p, mode) {
+    var q = { id: p.id, mode: mode };
+    if (mode === 'p_listen') {
+      q.options = shuffle([p.zh].concat(phraseDistractors(p, 'zh', 3)));
+      q.answer = p.zh;
+    } else if (mode === 'p_zh2en' || mode === 'p_reply') {
+      q.options = shuffle([p.plain].concat(phraseDistractors(p, 'plain', 3, mode === 'p_reply')));
+      q.answer = p.plain;
+    } else if (mode === 'p_order') {
+      var tokens = p.plain.split(' ');
+      var order = tokens.map(function (t, i) { return i; });
+      if (tokens.length > 1) {
+        do { order = shuffle(order); } while (order.every(function (v, i) { return v === i; }));
+      }
+      q.tokens = tokens;
+      q.order = order;      // 打亂後的順序（存 tokens 的索引）
+      q.picked = [];        // 使用者依序點選的 order 位置
+      q.answer = p.plain;
+    }
+    return q;
+  }
+
   function makeQuestion(id, mode) {
+    if (isPhrase(id)) return makePhraseQuestion(PHRASE_BY_ID[id], mode);
     var w = WORD_BY_ID[id];
     var q = { id: id, mode: mode, exIdx: Math.floor(Math.random() * w.examples.length) };
     if (mode === 'en2zh' || mode === 'listen') {
@@ -235,6 +298,12 @@
     var r = state.words[id];
     var lv = r ? r.level : 1;
     var modes;
+    if (isPhrase(id)) {
+      if (lv <= 1) modes = ['p_listen', 'p_zh2en', 'p_reply'];
+      else if (lv === 2) modes = ['p_order', 'p_reply', 'p_listen'];
+      else modes = ['p_order', 'p_reply', 'p_listen', 'p_zh2en'];
+      return pickRandom(modes);
+    }
     if (lv <= 1) modes = ['en2zh', 'card', 'zh2en', 'listen'];
     else if (lv === 2) modes = ['zh2en', 'fill', 'listen', 'en2zh'];
     else modes = ['fill', 'spell', 'listen', 'zh2en', 'card'];
@@ -244,30 +313,45 @@
   var PRACTICE_MODES = ['en2zh', 'zh2en', 'fill', 'spell', 'listen'];
 
   // ---------- 學習清單 ----------
-  function dueWords() {
+  function dueIn(list) {
     var t = today();
-    return WORDS.filter(function (w) {
+    return list.filter(function (w) {
       var r = state.words[w.id];
       return r && r.level >= 1 && r.due <= t;
     }).map(function (w) { return w.id; });
   }
-
-  function unseenWords() {
-    return WORDS.filter(function (w) { var r = state.words[w.id]; return !r || (r.level === 0 && !r.intro); })
-      .sort(function (a, b) { return a.lvl - b.lvl || a.order - b.order || a.catIndex - b.catIndex; })
-      .map(function (w) { return w.id; });
+  function unseenIn(list) {
+    return list.filter(function (w) { var r = state.words[w.id]; return !r || (r.level === 0 && !r.intro); });
   }
-
-  // 已介紹但尚未完成第一次測驗的字（例如學到一半離開）
-  function pendingNewWords() {
-    return WORDS.filter(function (w) {
+  // 已介紹但尚未完成第一次測驗的項目（例如學到一半離開）
+  function pendingIn(list) {
+    return list.filter(function (w) {
       var r = state.words[w.id];
       return r && r.level === 0 && r.intro;
     }).map(function (w) { return w.id; });
   }
 
+  function dueWords() { return dueIn(WORDS); }
+  function unseenWords() {
+    return unseenIn(WORDS)
+      .sort(function (a, b) { return a.lvl - b.lvl || a.order - b.order || a.catIndex - b.catIndex; })
+      .map(function (w) { return w.id; });
+  }
+  function pendingNewWords() { return pendingIn(WORDS); }
   function newQuota() {
     return Math.max(0, state.settings.dailyNew - dayRec().newCount);
+  }
+
+  // 句型依情境順序學習：從機場入境開始，符合剛抵達時的需要
+  function duePhrases() { return dueIn(PHRASES); }
+  function unseenPhrases() {
+    return unseenIn(PHRASES)
+      .sort(function (a, b) { return a.sceneIndex - b.sceneIndex || a.order - b.order; })
+      .map(function (p) { return p.id; });
+  }
+  function pendingNewPhrases() { return pendingIn(PHRASES); }
+  function newPhraseQuota() {
+    return Math.max(0, state.settings.dailyNewPhrases - (dayRec().newPhrases || 0));
   }
 
   function mistakeWords() {
@@ -294,6 +378,7 @@
   var session = null;
   var currentTab = 'home';
   var libFilter = { cat: 'all', q: '' };
+  var currentScene = null;
 
   // 每個 item: { type: 'intro' | 'quiz', id, mode, retry }
   function buildNewItems(ids) {
@@ -302,7 +387,8 @@
       var group = ids.slice(i, i + 5);
       group.forEach(function (id) { items.push({ type: 'intro', id: id }); });
       shuffle(group).forEach(function (id) {
-        items.push({ type: 'quiz', id: id, mode: Math.random() < 0.5 ? 'en2zh' : 'zh2en', first: true });
+        var mode = isPhrase(id) ? pickRandom(['p_listen', 'p_zh2en']) : pickRandom(['en2zh', 'zh2en']);
+        items.push({ type: 'quiz', id: id, mode: mode, first: true });
       });
     }
     return items;
@@ -318,6 +404,22 @@
     if (extraNew != null) reviews = [];
     var items = reviews.concat(buildNewItems(fresh));
     startSession('daily', items, true, extraNew != null ? '加碼學習' : '今日學習');
+  }
+
+  function startPhraseDaily(extraNew) {
+    var reviews = extraNew != null ? [] : shuffle(duePhrases()).map(function (id) {
+      return { type: 'quiz', id: id, mode: reviewMode(id) };
+    });
+    var pending = pendingNewPhrases();
+    var count = extraNew != null ? extraNew : newPhraseQuota();
+    var fresh = pending.concat(unseenPhrases().slice(0, Math.max(0, count - pending.length)));
+    startSession('daily', reviews.concat(buildNewItems(fresh)), true, extraNew != null ? '加碼句型' : '今日句型');
+  }
+
+  function startScenePractice(sceneId) {
+    var ids = shuffle(PHRASES.filter(function (p) { return p.scene === sceneId; }).map(function (p) { return p.id; })).slice(0, 10);
+    var items = ids.map(function (id) { return { type: 'quiz', id: id, mode: pickRandom(PHRASE_MODES) }; });
+    startSession('free', items, false, '情境練習');
   }
 
   function startMistakes() {
@@ -383,13 +485,13 @@
     // 答錯就在本輪稍後再考一次
     if (result !== 'correct' && !item.retry && session.kind !== 'free') {
       var pos = Math.min(session.items.length, session.idx + 4);
-      var retryMode = resolveMode(item.id, pickRandom(['en2zh', 'zh2en', 'listen']));
+      var retryMode = resolveMode(item.id, pickRandom(isPhrase(item.id) ? ['p_listen', 'p_zh2en'] : ['en2zh', 'zh2en', 'listen']));
       session.items.splice(pos, 0, { type: 'quiz', id: item.id, mode: retryMode, retry: true });
     }
     session.revealed = true;
     session.lastResult = result;
     renderSession();
-    if (state.settings.autoSpeak) speak(WORD_BY_ID[item.id].word);
+    if (state.settings.autoSpeak) speak(speechText(item.id));
   }
 
   function exitSession() {
@@ -405,6 +507,7 @@
     if (session) { renderSession(); return; }
     var body = '';
     if (currentTab === 'home') body = viewHome();
+    else if (currentTab === 'phrases') body = currentScene ? viewScene() : viewPhrases();
     else if (currentTab === 'library') body = viewLibrary();
     else if (currentTab === 'mistakes') body = viewMistakes();
     else if (currentTab === 'stats') body = viewStats();
@@ -415,7 +518,7 @@
 
   function navBar() {
     var tabs = [
-      ['home', '🏠', '今日'], ['library', '📚', '單字庫'], ['mistakes', '📝', '生字本'],
+      ['home', '🏠', '今日'], ['phrases', '💬', '句型'], ['library', '📚', '單字庫'], ['mistakes', '📝', '生字本'],
       ['stats', '📊', '統計'], ['settings', '⚙️', '設定'],
     ];
     return '<nav class="tabbar">' + tabs.map(function (t) {
@@ -444,6 +547,7 @@
       if (unseenWords().length) h += '<button class="btn block" data-action="extra">再學 5 個新字</button>';
     }
     h += '</section>';
+    h += phraseTodayCard(true);
 
     h += '<section class="tiles">';
     h += tile('🔥', streak() + ' 天', '連續練習');
@@ -462,6 +566,85 @@
     h += '<label>範圍<select id="free-scope"><option value="learned">已學過的字</option><option value="all">所有單字</option></select></label>';
     h += '</div><button class="btn block" data-action="start-free">開始練習</button></section>';
     return h;
+  }
+
+  // ---------- 句型 ----------
+  function phraseTodayCard(compact) {
+    var due = duePhrases().length;
+    var pending = pendingNewPhrases().length;
+    var remainNew = Math.min(Math.max(newPhraseQuota(), pending), unseenPhrases().length + pending);
+    var h = '<section class="card today phrase-today">';
+    if (compact) h += '<h2>💬 出國實用句型</h2>';
+    h += '<div class="today-row"><div class="big-num">' + due + '</div><div>句要複習</div></div>';
+    h += '<div class="today-row"><div class="big-num">' + remainNew + '</div><div>句新句型</div></div>';
+    if (due + remainNew > 0) {
+      h += '<button class="btn primary block" data-action="start-phrases">開始句型練習</button>';
+    } else {
+      h += '<p class="done-msg">🎉 今天的句型完成了！</p>';
+      if (unseenPhrases().length) h += '<button class="btn block" data-action="extra-phrases">再學 3 句</button>';
+    }
+    return h + '</section>';
+  }
+
+  function viewPhrases() {
+    var h = '<header class="hero"><h1>出國實用句型</h1><p class="sub">打工度假篇 · 從入境到交朋友</p></header>';
+    h += phraseTodayCard(false);
+    h += '<h2 class="section-title">情境</h2><div class="scene-list">';
+    SCENES.forEach(function (s) {
+      var learned = s.phrases.filter(function (p) { return isLearned('p:' + p[0].replace(/[\[\]]/g, '')); }).length;
+      h += '<button class="scene-card" data-scene="' + s.id + '">' +
+        '<span class="scene-icon">' + s.icon + '</span>' +
+        '<span class="scene-main"><span class="scene-name">' + s.name + '</span>' +
+        '<span class="progress"><span style="width:' + pct(learned, s.phrases.length) + '%"></span></span></span>' +
+        '<span class="scene-num">' + learned + '/' + s.phrases.length + '</span></button>';
+    });
+    return h + '</div>';
+  }
+
+  function viewScene() {
+    var s = SCENES.filter(function (x) { return x.id === currentScene; })[0];
+    var list = PHRASES.filter(function (p) { return p.scene === s.id; });
+    var h = '<header class="page-head"><button class="btn link back" data-action="scene-back">‹ 所有情境</button>' +
+      '<h1>' + s.icon + ' ' + s.name + '</h1></header>';
+    h += '<button class="btn primary block" data-action="scene-practice">練習這個情境（' + Math.min(10, list.length) + ' 題）</button>';
+    h += '<p class="hint">點句子可以看對方可能怎麼說、替換用法和小提醒。練習這個情境不影響複習排程。</p>';
+    return h + '<ul class="word-list">' + list.map(phraseRow).join('') + '</ul>';
+  }
+
+  function phraseHtml(p) {
+    return esc(p.en).replace(/\[(.+?)\]/, '<mark>$1</mark>');
+  }
+
+  function phraseRow(p) {
+    var st = STATUS[statusOf(p.id)];
+    return '<li class="word-item"><details><summary>' +
+      '<div class="wi-main"><span class="wi-phrase">' + phraseHtml(p) + '</span>' +
+      '<div class="wi-zh">' + esc(p.zh) + '</div></div>' +
+      '<span class="badge ' + st.cls + '">' + st.label + '</span>' + speakBtn(p.plain) +
+      '</summary>' + phraseDetail(p) + '</details></li>';
+  }
+
+  function phraseDetail(p) {
+    var h = '<div class="detail">';
+    if (p.q) {
+      h += '<p class="they-label">對方可能會說</p><p class="ex">' + esc(p.q.en) + ' ' + speakBtn(p.q.en) + '</p>' +
+        '<p class="ex-zh">' + esc(p.q.zh) + '</p>';
+    }
+    if (p.swaps.length) {
+      h += '<p class="they-label">也可以替換成</p>' + p.swaps.map(function (sw) {
+        var line = p.en.replace(/\[(.+?)\]/, '[' + sw + ']');
+        return '<p class="ex">' + esc(line).replace(/\[(.+?)\]/, '<mark>$1</mark>') + ' ' + speakBtn(exPlain(line)) + '</p>';
+      }).join('');
+    }
+    if (p.note) h += '<p class="note">💡 ' + esc(p.note) + '</p>';
+    if (!p.q && !p.swaps.length && !p.note) h += '<p class="ex-zh">這句可以直接整句記下來使用。</p>';
+    return h + '</div>';
+  }
+
+  function phraseCard(p) {
+    return '<div class="word-card">' +
+      '<div class="wc-top"><h2 class="wc-phrase">' + phraseHtml(p) + '</h2>' + speakBtn(p.plain, true) + '</div>' +
+      '<p class="wc-zh">' + esc(p.zh) + '</p>' + phraseDetail(p) + '</div>';
   }
 
   function tile(icon, value, label) {
@@ -566,6 +749,18 @@
     });
     h += '</div></section>';
 
+    var pc = { new: 0, learning: 0, familiar: 0, mastered: 0 };
+    PHRASES.forEach(function (p) { pc[statusOf(p.id)]++; });
+    h += '<section class="card"><h2>句型掌握度</h2><div class="stack-bar">';
+    ['mastered', 'familiar', 'learning', 'new'].forEach(function (k) {
+      if (pc[k]) h += '<div class="seg ' + STATUS[k].cls + '" style="flex:' + pc[k] + '"></div>';
+    });
+    h += '</div><div class="legend">';
+    ['mastered', 'familiar', 'learning', 'new'].forEach(function (k) {
+      h += '<span><i class="dot ' + STATUS[k].cls + '"></i>' + STATUS[k].label + ' ' + pc[k] + '</span>';
+    });
+    h += '</div></section>';
+
     // 近 14 天
     var days = [];
     for (var i = 13; i >= 0; i--) days.push(addDays(today(), -i));
@@ -603,6 +798,9 @@
     h += '<section class="card"><h2>學習</h2>';
     h += '<label class="row">每日新字數量<select id="set-daily">' + [5, 10, 15, 20, 25, 30, 40, 50].map(function (n) {
       return '<option' + (n === s.dailyNew ? ' selected' : '') + '>' + n + '</option>';
+    }).join('') + '</select></label>';
+    h += '<label class="row">每日新句型數量<select id="set-daily-phrases">' + [3, 5, 8, 10].map(function (n) {
+      return '<option' + (n === s.dailyNewPhrases ? ' selected' : '') + '>' + n + '</option>';
     }).join('') + '</select></label></section>';
 
     h += '<section class="card"><h2>發音</h2>';
@@ -621,14 +819,15 @@
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
     h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
     h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
-    h += '<p class="footer">多益練習 App v0.2.1 · 單字 ' + WORDS.length + ' 個</p>';
+    h += '<p class="footer">多益練習 App v0.3 · 單字 ' + WORDS.length + ' 個 · 句型 ' + PHRASES.length + ' 句</p>';
     return h;
   }
 
   // ---------- 練習畫面 ----------
   function renderSession() {
     var item = currentItem();
-    var w = WORD_BY_ID[item.id];
+    var w = getItem(item.id);
+    var phrase = isPhrase(item.id);
     var progress = pct(session.idx, session.items.length);
     var h = '<div class="session"><header class="session-head">' +
       '<button class="icon-btn" data-action="exit" aria-label="離開">✕</button>' +
@@ -637,11 +836,11 @@
     h += '<main class="session-body">';
 
     if (item.type === 'intro') {
-      h += '<p class="tag new-tag">新單字</p>' + wordCard(w) +
+      h += '<p class="tag new-tag">' + (phrase ? '新句型' : '新單字') + '</p>' + (phrase ? phraseCard(w) : wordCard(w)) +
         '<button class="btn primary block" data-action="next">記住了，下一個</button>';
     } else {
       if (!session.q) session.q = makeQuestion(item.id, item.mode);
-      h += quizHtml(w, item, session.q);
+      h += phrase ? phraseQuizHtml(w, item, session.q) : quizHtml(w, item, session.q);
     }
     h += '</main></div>';
     $app.innerHTML = h;
@@ -650,8 +849,9 @@
     // 每題只在第一次顯示時自動發音
     if (session.spokenIdx !== session.idx) {
       session.spokenIdx = session.idx;
-      if (item.type === 'intro' && state.settings.autoSpeak) speak(w.word);
-      if (item.mode === 'spell' || item.mode === 'listen') speak(w.word);
+      if (item.type === 'intro' && state.settings.autoSpeak) speak(speechText(item.id));
+      if (item.mode === 'spell' || item.mode === 'listen' || item.mode === 'p_listen') speak(speechText(item.id));
+      if (item.mode === 'p_reply' && !session.revealed) speak(w.q.en);
     }
 
     var input = document.getElementById('spell-input');
@@ -721,7 +921,14 @@
       return h;
     }
 
-    h += '<div class="options">' + q.options.map(function (opt) {
+    h += optionsHtml(q);
+    if (revealed) h += feedback(w);
+    return h;
+  }
+
+  function optionsHtml(q) {
+    var revealed = session.revealed;
+    return '<div class="options">' + q.options.map(function (opt) {
       var cls = 'option';
       if (revealed) {
         if (opt === q.answer) cls += ' right';
@@ -730,7 +937,47 @@
       }
       return '<button class="' + cls + '" data-option="' + esc(opt) + '"' + (revealed ? ' disabled' : '') + '>' + esc(opt) + '</button>';
     }).join('') + '</div>';
-    if (revealed) h += feedback(w);
+  }
+
+  function phraseQuizHtml(p, item, q) {
+    var h = '<p class="tag">' + MODE_LABEL[item.mode] + (item.retry ? ' · 再試一次' : '') + '</p>';
+    var revealed = session.revealed;
+
+    if (item.mode === 'p_listen') {
+      h += '<div class="prompt">' + (revealed
+        ? '<p class="prompt-sentence center">' + esc(p.plain) + ' ' + speakBtn(p.plain) + '</p>'
+        : '<button class="listen-btn" data-speak="' + esc(p.plain) + '" aria-label="再聽一次">🔊</button><p class="hint">點喇叭可以再聽一次</p>') +
+        '</div><p class="hint center">聽句子，選出正確的中文意思</p>';
+    } else if (item.mode === 'p_zh2en') {
+      h += '<div class="prompt"><h2 class="prompt-zh">' + esc(p.zh) + '</h2></div><p class="hint center">選出正確的英文說法</p>';
+    } else if (item.mode === 'p_reply') {
+      h += '<div class="prompt they"><p class="they-label">對方說</p>' +
+        '<p class="they-say">' + esc(p.q.en) + ' ' + speakBtn(p.q.en) + '</p>' +
+        (revealed ? '<p class="ex-zh">' + esc(p.q.zh) + '</p>' : '') +
+        '</div><p class="hint center">你該怎麼回答？</p>';
+    } else if (item.mode === 'p_order') {
+      h += '<div class="prompt"><h2 class="prompt-zh">' + esc(p.zh) + '</h2></div>';
+      if (!revealed) {
+        var built = q.picked.map(function (pos, i) {
+          return '<button class="token picked" data-unpick="' + i + '">' + esc(q.tokens[q.order[pos]]) + '</button>';
+        }).join('');
+        var pool = q.order.map(function (ti, pos) {
+          var used = q.picked.indexOf(pos) >= 0;
+          return '<button class="token' + (used ? ' used' : '') + '" data-pick="' + pos + '"' + (used ? ' disabled' : '') + '>' + esc(q.tokens[ti]) + '</button>';
+        }).join('');
+        var done = q.picked.length === q.order.length;
+        h += '<p class="hint center">依序點選單字，排出正確的句子</p>' +
+          '<div class="order-built">' + (built || '<span class="order-empty">點下面的單字放到這裡</span>') + '</div>' +
+          '<div class="order-pool">' + pool + '</div>' +
+          '<div class="btn-row"><button class="btn" data-action="order-reset">重來</button>' +
+          '<button class="btn primary" data-action="order-check"' + (done ? '' : ' disabled') + '>確定</button></div>';
+      } else {
+        h += '<p class="your-answer">你的答案：<b>' + esc(session.orderInput) + '</b></p>' + feedback(p);
+      }
+      return h;
+    }
+    h += optionsHtml(q);
+    if (revealed) h += feedback(p);
     return h;
   }
 
@@ -739,8 +986,11 @@
     var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
       : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ 明天再複習</div>'
         : '<div class="fb-head ng">✗ 答錯了，稍後會再考一次</div>';
-    if (session.kind === 'free' && r === 'wrong') head = '<div class="fb-head ng">✗ 答錯了，已加入生字本</div>';
-    return '<div class="feedback">' + head + wordCard(w, session.q ? session.q.exIdx : 0) + '</div>' +
+    if (session.kind === 'free' && r === 'wrong') {
+      head = '<div class="fb-head ng">✗ 答錯了' + (w.type === 'phrase' ? '，再看一次這句' : '，已加入生字本') + '</div>';
+    }
+    var card = w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
+    return '<div class="feedback">' + head + card + '</div>' +
       '<button class="btn primary block" data-action="next">下一題</button>';
   }
 
@@ -755,8 +1005,8 @@
         tile('🎯', pct(s.correct, total) + '%', '正確率') + tile('🔥', streak() + ' 天', '連續練習') + '</section>';
     }
     if (s.wrongIds.length) {
-      h += '<section class="card"><h2>需要加強的字</h2><ul class="word-list">' +
-        s.wrongIds.map(function (id) { return wordRow(WORD_BY_ID[id]); }).join('') + '</ul></section>';
+      h += '<section class="card"><h2>需要加強的項目</h2><ul class="word-list">' +
+        s.wrongIds.map(function (id) { return isPhrase(id) ? phraseRow(PHRASE_BY_ID[id]) : wordRow(WORD_BY_ID[id]); }).join('') + '</ul></section>';
     }
     h += '<button class="btn primary block" data-action="exit">回到首頁</button></main></div>';
     $app.innerHTML = h;
@@ -775,8 +1025,25 @@
     }
     if (t.dataset.tab) {
       currentTab = t.dataset.tab;
+      currentScene = null;
       render();
       window.scrollTo(0, 0);
+      return;
+    }
+    if (t.dataset.scene) {
+      currentScene = t.dataset.scene;
+      render();
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (t.dataset.pick != null && session && !session.revealed) {
+      session.q.picked.push(+t.dataset.pick);
+      renderSession();
+      return;
+    }
+    if (t.dataset.unpick != null && session && !session.revealed) {
+      session.q.picked.splice(+t.dataset.unpick, 1);
+      renderSession();
       return;
     }
     if (t.dataset.cat) {
@@ -803,6 +1070,17 @@
     switch (t.dataset.action) {
       case 'start-daily': startDaily(); break;
       case 'extra': startDaily(5); break;
+      case 'start-phrases': startPhraseDaily(); break;
+      case 'extra-phrases': startPhraseDaily(3); break;
+      case 'scene-practice': startScenePractice(currentScene); break;
+      case 'scene-back': currentScene = null; render(); window.scrollTo(0, 0); break;
+      case 'order-reset': session.q.picked = []; renderSession(); break;
+      case 'order-check': {
+        var oq = session.q;
+        session.orderInput = oq.picked.map(function (pos) { return oq.tokens[oq.order[pos]]; }).join(' ');
+        answer(session.orderInput === oq.answer ? 'correct' : 'wrong');
+        break;
+      }
       case 'start-mistakes': startMistakes(); break;
       case 'start-free': {
         var cat = document.getElementById('free-cat').value;
@@ -847,6 +1125,7 @@
     var id = e.target.id;
     var s = state.settings;
     if (id === 'set-daily') s.dailyNew = +e.target.value;
+    else if (id === 'set-daily-phrases') s.dailyNewPhrases = +e.target.value;
     else if (id === 'set-accent') s.accent = e.target.value;
     else if (id === 'set-rate') s.rate = +e.target.value;
     else if (id === 'set-auto') s.autoSpeak = e.target.checked;
