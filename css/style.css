@@ -462,3 +462,34 @@ a.btn { color: inherit; }
   font-size: 0.8rem;
 }
 .hint a { color: var(--accent); }
+
+/* 練習分頁與多益題型 */
+.scene-desc { font-size: 0.8rem; color: var(--muted); font-weight: normal; }
+.scene-num { text-align: right; line-height: 1.4; }
+.resp-row { display: flex; align-items: center; gap: 10px; }
+.resp-row .option { flex: 1; }
+.btn.link.inline { display: inline; width: auto; min-height: 0; padding: 0; color: var(--accent); }
+
+/* 口說跟讀 */
+.shadow-target { font-size: 1.35rem; font-weight: 600; line-height: 1.6; margin: 0 0 8px; }
+.shadow-target .ok { color: var(--ok); }
+.shadow-target .miss { color: var(--ng); text-decoration: underline wavy; text-underline-offset: 4px; }
+.shadow-result { margin: 8px 0; }
+.shadow-score { text-align: center; font-size: 2.2rem; font-weight: 800; margin: 0; }
+.shadow-score.ok { color: var(--ok); }
+.shadow-score.ng { color: var(--ng); }
+.mic-btn {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  margin-top: 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mic-btn.on { background: var(--ng); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.7; } }

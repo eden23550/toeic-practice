@@ -1,11 +1,12 @@
 // 修改 App 檔案後請更新版本號，讓使用者拿到新版；要和 js/app.js 的 APP_VERSION 一致（npm test 會檢查）
-var CACHE = 'toeic-practice-v0.3.4';
+var CACHE = 'toeic-practice-v0.4.0';
 var FILES = [
   './',
   'index.html',
   'css/style.css',
   'js/words.js',
   'js/phrases.js',
+  'js/toeic.js',
   'js/app.js',
   'manifest.webmanifest',
   'icons/icon.svg',

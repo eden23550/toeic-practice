@@ -50,6 +50,21 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url });
+  // 模擬語音辨識：測試環境沒有麥克風，假裝使用者唸出 window.__said（預設唸出畫面上的句子）
+  await context.addInitScript(() => {
+    window.__said = null;
+    window.SpeechRecognition = window.webkitSpeechRecognition = class {
+      start() {
+        setTimeout(() => {
+          const target = document.querySelector('.shadow-target').textContent.trim();
+          const transcript = window.__said || target;
+          this.onresult && this.onresult({ results: [[{ transcript, confidence: 0.9 }]] });
+          this.onend && this.onend();
+        }, 50);
+      }
+      abort() {}
+    };
+  });
   const page = await context.newPage();
 
   const consoleErrors = [];
@@ -156,6 +171,85 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="exit"]');
     });
 
+    for (const [type, name] of [['resp', 'Part 2 聽力應答'], ['gram', 'Part 5 文法'], ['col', '搭配詞']]) {
+      await step(`多益題型：${name}（答對與答錯都能判斷）`, async () => {
+        await page.click('[data-tab="practice"]');
+        await page.click(`[data-drill="${type}"]`);
+        let right = 0, wrong = 0;
+        for (let i = 0; i < 10; i++) {
+          expect((await text('.tag')).startsWith(name), `題型標籤應該是「${name}」`);
+          if (type === 'resp' && i === 0) {
+            expect(!(await page.$('.they-say')), 'Part 2 一開始不應該顯示問句文字');
+            await page.click('[data-action="show-text"]');
+            expect(await page.$('.they-say'), '按「看文字」後應該顯示問句');
+          }
+          // 從題庫找出正確答案，交替答對、答錯
+          const id = await page.evaluate(() => {
+            const s = document.querySelector('.prompt-sentence, .they-say');
+            return s ? s.textContent : null;
+          });
+          const answer = await page.evaluate(({ type, id }) => {
+            const ds = window.TOEIC_DRILLS.filter((d) => d.type === type);
+            const opts = [...document.querySelectorAll('.option')].map((o) => o.dataset.option);
+            const d = ds.find((x) => opts.includes(x.answer) && opts.every((o) => x.choices.includes(o)) &&
+              (!id || (x.sentence ? id.replace(/_+/, '___').trim() === x.sentence : id.includes(x.question))));
+            return d.answer;
+          }, { type, id });
+          const pick = i % 2 === 0 ? answer : await page.evaluate((a) =>
+            [...document.querySelectorAll('.option')].map((o) => o.dataset.option).find((o) => o !== a), answer);
+          await page.click(`.option[data-option="${pick.replace(/"/g, '\\"')}"]`);
+          const ok = (await text('.fb-head')).startsWith('✓');
+          expect(ok === (i % 2 === 0), `第 ${i + 1} 題判斷錯誤`);
+          ok ? right++ : wrong++;
+          expect(await page.$('.word-card .note'), '作答後應該顯示解析');
+          await page.click('[data-action="next"]');
+        }
+        expect(await page.$('.summary'), '10 題後應該出現結算畫面');
+        await page.click('[data-action="exit"]');
+        expect((await text(`[data-drill="${type}"] .scene-num`)).startsWith('10/'), '練習頁應該記錄做過 10 題');
+      });
+    }
+
+    await step('口說跟讀：唸對、唸錯都能評分', async () => {
+      await page.click('[data-tab="practice"]');
+      await page.click('[data-action="start-shadow"]');
+      await page.click('[data-action="shadow-mic"]');
+      await page.waitForSelector('.shadow-score');
+      expect((await text('.shadow-score')) === '100 分', '完整唸出句子應該是 100 分，實際是 ' + await text('.shadow-score'));
+      await page.evaluate(() => { window.__said = 'hello'; });
+      await page.click('[data-action="shadow-mic"]');
+      await page.waitForFunction(() => document.querySelector('.shadow-score') && document.querySelector('.shadow-score').textContent !== '100 分');
+      expect(await page.$('.shadow-target .miss'), '唸錯時應該用紅色標出沒唸到的字');
+      await page.evaluate(() => { window.__said = null; });
+      for (let i = 0; i < 10 && !(await page.$('.summary')); i++) await page.click('[data-action="shadow-next"]');
+      expect((await text('.summary h1')).includes('口說跟讀完成'), '唸完全部句子後應該出現完成畫面');
+      await page.click('[data-action="shadow-exit"]');
+    });
+
+    await step('口說評分：縮寫、數字、大小寫與標點不影響分數', async () => {
+      const cases = [
+        ["I'm planning to stay for about a year.", 'I am planning to stay for about a year', 100],
+        ["I'll be about ten minutes late. Sorry about that.", "I'll be about 10 minutes late sorry about that", 100],
+        ["Where's the nearest bus stop?", 'where is the nearest bus stop', 100],
+        ['Can I try this on?', 'can I buy this one', 60],
+        ['Catch you later!', '', 0],
+      ];
+      for (const [target, said, expected] of cases) {
+        const r = await page.evaluate(({ target, said }) => window.TOEIC_APP.scoreSpeech(target, said), { target, said });
+        expect(r.score === expected, `「${said}」對「${target}」應該是 ${expected} 分，實際是 ${r.score} 分`);
+      }
+      const r = await page.evaluate(() => window.TOEIC_APP.scoreSpeech('Can I try this on?', 'can I buy this one'));
+      expect(r.tokens.filter((t) => !t.ok).map((t) => t.text).join(' ') === 'try on?', '應該標出沒唸到的 try 和 on?');
+    });
+
+    await step('生字本移到練習分頁', async () => {
+      await page.click('[data-tab="practice"]');
+      await page.click('[data-action="open-mistakes"]');
+      expect((await text('.page-head h1')) === '生字本', '應該打開生字本');
+      await page.click('[data-action="practice-back"]');
+      expect(await page.$('[data-drill="gram"]'), '返回後應該回到練習頁');
+    });
+
     await step('句型分頁與情境內容', async () => {
       await page.click('[data-tab="phrases"]');
       expect((await page.$$('.scene-card')).length === 10, '應該有 10 個情境');
@@ -231,7 +325,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
     });
 
     await step('其他分頁都能正常顯示', async () => {
-      for (const tab of ['library', 'mistakes', 'stats', 'settings']) {
+      for (const tab of ['practice', 'library', 'stats', 'settings']) {
         await page.click(`[data-tab="${tab}"]`);
         expect((await text('.page')).length > 20, `${tab} 分頁是空的`);
       }

@@ -12,11 +12,35 @@
 
   // 句型的 id 以 p: 開頭，學習紀錄和單字存在同一個地方，共用複習排程
   function isPhrase(id) { return id.indexOf('p:') === 0; }
-  function getItem(id) { return isPhrase(id) ? PHRASE_BY_ID[id] : WORD_BY_ID[id]; }
-  function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
+
+  // 多益題型（搭配詞 c:、Part 5 文法 g:、Part 2 聽力應答 l:）只記錄對錯，不排複習
+  var DRILLS = window.TOEIC_DRILLS;
+  var DRILL_BY_ID = {};
+  DRILLS.forEach(function (d) { DRILL_BY_ID[d.id] = d; });
+  function isDrill(id) { return /^[cgl]:/.test(id); }
+  var DRILL_SETS = {
+    resp: { name: 'Part 2 聽力應答', icon: '🎧', desc: '聽問句，從三個回答選出最合適的' },
+    gram: { name: 'Part 5 文法', icon: '✏️', desc: '時態、介系詞、連接詞等文法填空' },
+    col: { name: '搭配詞', icon: '🔗', desc: 'make 還是 do？選出最自然的搭配' },
+  };
+  var DRILL_ORDER = ['resp', 'gram', 'col'];
+
+  function getItem(id) {
+    if (isPhrase(id)) return PHRASE_BY_ID[id];
+    if (isDrill(id)) return DRILL_BY_ID[id];
+    return WORD_BY_ID[id];
+  }
+  function fillBlank(d) { return d.sentence.replace('___', d.answer); }
+  function speechText(id) {
+    var it = getItem(id);
+    if (it.type === 'phrase') return it.plain;
+    if (it.type === 'resp') return it.answer;
+    if (it.type === 'col' || it.type === 'gram') return fillBlank(it);
+    return it.word;
+  }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.3.4';
+  var APP_VERSION = '0.4.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -44,6 +68,7 @@
   var MODE_LABEL = {
     en2zh: '英選中', zh2en: '中選英', fill: '詞性填空', spell: '拼字', card: '單字卡', listen: '聽力',
     p_listen: '聽句子', p_zh2en: '中翻英', p_order: '句子重組', p_reply: '情境對話',
+    col: '搭配詞', gram: 'Part 5 文法', resp: 'Part 2 聽力應答',
   };
   var PHRASE_MODES = ['p_listen', 'p_zh2en', 'p_order', 'p_reply'];
   var ORDER_MAX_WORDS = 10;
@@ -217,6 +242,23 @@
     if (v) u.voice = v;
     window.speechSynthesis.speak(u);
   }
+  // 依序唸出多段文字（Part 2：先唸問句，再唸 A、B、C 三個回答）
+  function speakQueue(texts) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    var v = pickVoice(state.settings.accent);
+    texts.forEach(function (text) {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = state.settings.accent;
+      u.rate = state.settings.rate;
+      if (v) u.voice = v;
+      window.speechSynthesis.speak(u);
+    });
+  }
+  function respSpeechList(d, q) {
+    return [d.question].concat(q.options.map(function (o, i) { return 'ABC'.charAt(i) + '. ' + o; }));
+  }
+
   function speakBtn(text, big) {
     return '<button class="speak' + (big ? ' big' : '') + '" data-speak="' + esc(text) + '" aria-label="發音">🔊</button>';
   }
@@ -242,6 +284,7 @@
 
   // 有些字沒有詞性變化題、有些裝置不能發音，改用其他題型
   function resolveMode(id, mode) {
+    if (isDrill(id)) return mode;
     if (isPhrase(id)) {
       var p = PHRASE_BY_ID[id];
       if (mode === 'p_reply' && !p.q) return 'p_zh2en';
@@ -294,6 +337,10 @@
 
   function makeQuestion(id, mode) {
     if (isPhrase(id)) return makePhraseQuestion(PHRASE_BY_ID[id], mode);
+    if (isDrill(id)) {
+      var d = DRILL_BY_ID[id];
+      return { id: id, mode: mode, options: shuffle(d.choices), answer: d.answer };
+    }
     var w = WORD_BY_ID[id];
     var q = { id: id, mode: mode, exIdx: Math.floor(Math.random() * w.examples.length) };
     if (mode === 'en2zh' || mode === 'listen') {
@@ -395,6 +442,8 @@
   var currentTab = 'home';
   var libFilter = { cat: 'all', q: '' };
   var currentScene = null;
+  var practiceSub = null;   // 練習分頁裡的子頁面：'mistakes' 或 null
+  var shadow = null;        // 口說跟讀的狀態
 
   // 每個 item: { type: 'intro' | 'quiz', id, mode, retry }
   function buildNewItems(ids) {
@@ -438,6 +487,21 @@
     startSession('free', items, false, '情境練習');
   }
 
+  // 每次 10 題：上次答錯的優先，再來是沒做過的，最後才是答對過的
+  function startDrill(type) {
+    var rank = function (d) {
+      var r = state.words[d.id];
+      if (!r) return 1;
+      return r.mistake ? 0 : 2;
+    };
+    var ids = shuffle(DRILLS.filter(function (d) { return d.type === type; }))
+      .sort(function (a, b) { return rank(a) - rank(b); })
+      .slice(0, 10)
+      .map(function (d) { return d.id; });
+    var items = ids.map(function (id) { return { type: 'quiz', id: id, mode: type }; });
+    startSession('free', items, false, DRILL_SETS[type].name);
+  }
+
   function startMistakes() {
     var ids = shuffle(mistakeWords()).slice(0, 15);
     var items = ids.map(function (id) {
@@ -475,6 +539,7 @@
     session.idx++;
     session.q = null;
     session.picked = null;
+    session.showText = false;
     session.revealed = false;
     if (session.idx >= session.items.length) {
       renderSummary();
@@ -522,11 +587,12 @@
 
   function render() {
     if (session) { renderSession(); return; }
+    if (shadow) { renderShadow(); return; }
     var body = '';
     if (currentTab === 'home') body = viewHome();
     else if (currentTab === 'phrases') body = currentScene ? viewScene() : viewPhrases();
     else if (currentTab === 'library') body = viewLibrary();
-    else if (currentTab === 'mistakes') body = viewMistakes();
+    else if (currentTab === 'practice') body = practiceSub === 'mistakes' ? viewMistakes() : viewPractice();
     else if (currentTab === 'stats') body = viewStats();
     else if (currentTab === 'settings') body = viewSettings();
     $app.innerHTML = '<main class="page">' + body + '</main>' + navBar();
@@ -535,7 +601,7 @@
 
   function navBar() {
     var tabs = [
-      ['home', '🏠', '今日'], ['phrases', '💬', '句型'], ['library', '📚', '單字庫'], ['mistakes', '📝', '生字本'],
+      ['home', '🏠', '今日'], ['phrases', '💬', '句型'], ['practice', '🎯', '練習'], ['library', '📚', '單字庫'],
       ['stats', '📊', '統計'], ['settings', '⚙️', '設定'],
     ];
     return '<nav class="tabbar">' + tabs.map(function (t) {
@@ -722,9 +788,45 @@
     });
   }
 
+  function drillStats(type) {
+    var list = DRILLS.filter(function (d) { return d.type === type; });
+    var done = 0, c = 0, w = 0;
+    list.forEach(function (d) {
+      var r = state.words[d.id];
+      if (r) { done++; c += r.correct; w += r.wrong; }
+    });
+    return { total: list.length, done: done, acc: c + w ? pct(c, c + w) + '%' : '–' };
+  }
+
+  function viewPractice() {
+    var h = '<header class="hero"><h1>練習</h1><p class="sub">多益題型、口說跟讀與生字本</p></header>';
+    h += '<h2 class="section-title">多益題型（每次 10 題）</h2><div class="scene-list">';
+    DRILL_ORDER.forEach(function (type) {
+      var m = DRILL_SETS[type];
+      var st = drillStats(type);
+      h += '<button class="scene-card" data-drill="' + type + '">' +
+        '<span class="scene-icon">' + m.icon + '</span>' +
+        '<span class="scene-main"><span class="scene-name">' + m.name + '</span>' +
+        '<span class="scene-desc">' + m.desc + '</span>' +
+        '<span class="progress"><span style="width:' + pct(st.done, st.total) + '%"></span></span></span>' +
+        '<span class="scene-num">' + st.done + '/' + st.total + '<br>正確率 ' + st.acc + '</span></button>';
+    });
+    h += '</div><h2 class="section-title">口說</h2><div class="scene-list">' +
+      '<button class="scene-card" data-action="start-shadow"><span class="scene-icon">🎤</span>' +
+      '<span class="scene-main"><span class="scene-name">口說跟讀</span>' +
+      '<span class="scene-desc">跟著唸出國實用句型，App 標出沒唸清楚的字</span></span></button></div>';
+    var mistakes = mistakeWords().length;
+    h += '<h2 class="section-title">複習</h2><div class="scene-list">' +
+      '<button class="scene-card" data-action="open-mistakes"><span class="scene-icon">📝</span>' +
+      '<span class="scene-main"><span class="scene-name">生字本</span>' +
+      '<span class="scene-desc">答錯或標記「模糊」的單字</span></span>' +
+      '<span class="scene-num">' + mistakes + ' 個字</span></button></div>';
+    return h;
+  }
+
   function viewMistakes() {
     var ids = mistakeWords();
-    var h = '<header class="page-head"><h1>生字本</h1></header>';
+    var h = '<header class="page-head"><button class="btn link back" data-action="practice-back">‹ 練習</button><h1>生字本</h1></header>';
     h += '<p class="hint">答錯或標記「模糊」的字會自動加入，在生字本練習中連續答對 ' + MISTAKE_CLEAR_STREAK + ' 次就會移出。</p>';
     if (!ids.length) return h + '<p class="empty">目前沒有生字，繼續保持！</p>';
     h += '<button class="btn primary block" data-action="start-mistakes">練習生字本（' + Math.min(15, ids.length) + ' 題）</button>';
@@ -777,6 +879,15 @@
       h += '<span><i class="dot ' + STATUS[k].cls + '"></i>' + STATUS[k].label + ' ' + pc[k] + '</span>';
     });
     h += '</div></section>';
+
+    h += '<section class="card"><h2>多益題型</h2><ul class="cat-stats">';
+    DRILL_ORDER.forEach(function (type) {
+      var st = drillStats(type);
+      h += '<li><div class="cs-head"><span>' + DRILL_SETS[type].icon + ' ' + DRILL_SETS[type].name + '</span><span class="cs-num">' +
+        st.done + '/' + st.total + ' · 正確率 ' + st.acc + '</span></div>' +
+        '<div class="progress"><div style="width:' + pct(st.done, st.total) + '%"></div></div></li>';
+    });
+    h += '</ul></section>';
 
     // 近 14 天
     var days = [];
@@ -845,7 +956,7 @@
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
     h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
     h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
-    h += '<p class="footer">多益練習 App v' + APP_VERSION + ' · 單字 ' + WORDS.length + ' 個 · 句型 ' + PHRASES.length + ' 句</p>';
+    h += '<p class="footer">多益練習 App v' + APP_VERSION + ' · 單字 ' + WORDS.length + ' 個 · 句型 ' + PHRASES.length + ' 句 · 多益題 ' + DRILLS.length + ' 題</p>';
     return h;
   }
 
@@ -866,7 +977,8 @@
         '<button class="btn primary block" data-action="next">記住了，下一個</button>';
     } else {
       if (!session.q) session.q = makeQuestion(item.id, item.mode);
-      h += phrase ? phraseQuizHtml(w, item, session.q) : quizHtml(w, item, session.q);
+      if (isDrill(item.id)) h += drillQuizHtml(w, item, session.q);
+      else h += phrase ? phraseQuizHtml(w, item, session.q) : quizHtml(w, item, session.q);
     }
     h += '</main></div>';
     $app.innerHTML = h;
@@ -878,6 +990,7 @@
       if (item.type === 'intro' && state.settings.autoSpeak) speak(speechText(item.id));
       if (item.mode === 'spell' || item.mode === 'listen' || item.mode === 'p_listen') speak(speechText(item.id));
       if (item.mode === 'p_reply' && !session.revealed) speak(w.q.en);
+      if (item.mode === 'resp' && !session.revealed) speakQueue(respSpeechList(w, session.q));
     }
 
     var input = document.getElementById('spell-input');
@@ -954,17 +1067,71 @@
     return h;
   }
 
-  function optionsHtml(q) {
+  function optionsHtml(q, labeled) {
     var revealed = session.revealed;
-    return '<div class="options">' + q.options.map(function (opt) {
+    return '<div class="options">' + q.options.map(function (opt, i) {
       var cls = 'option';
       if (revealed) {
         if (opt === q.answer) cls += ' right';
         else if (opt === session.picked) cls += ' wrong';
         else cls += ' dim';
       }
-      return '<button class="' + cls + '" data-option="' + esc(opt) + '"' + (revealed ? ' disabled' : '') + '>' + esc(opt) + '</button>';
+      var label = (labeled ? '(' + 'ABCD'.charAt(i) + ') ' : '') + esc(opt);
+      return '<button class="' + cls + '" data-option="' + esc(opt) + '"' + (revealed ? ' disabled' : '') + '>' + label + '</button>';
     }).join('') + '</div>';
+  }
+
+  function blankHtml(d, revealed) {
+    var parts = esc(d.sentence).split('___');
+    return parts[0] + (revealed ? '<mark>' + esc(d.answer) + '</mark>' : '<span class="blank">_____</span>') + parts[1];
+  }
+
+  function drillQuizHtml(d, item, q) {
+    var revealed = session.revealed;
+    var h = '<p class="tag">' + MODE_LABEL[item.mode] + (d.topic ? ' · ' + esc(d.topic) : '') + '</p>';
+    if (item.mode === 'resp') {
+      // 多益 Part 2 只有聲音；看不懂可以按「看文字」
+      var showText = revealed || session.showText;
+      h += '<div class="prompt they"><p class="they-label">問句</p>' +
+        (showText
+          ? '<p class="they-say">' + esc(d.question) + ' ' + speakBtn(d.question) + '</p>'
+          : '<button class="listen-btn" data-action="speak-all" aria-label="重聽">🔊</button><p class="hint">點喇叭重聽問句和三個回答</p>') +
+        (revealed ? '<p class="ex-zh">' + esc(d.zh) + '</p>' : '') + '</div>';
+      h += '<p class="hint center">選出最合適的回答' +
+        (showText ? '' : '　<button class="btn link inline" data-action="show-text">聽不懂？看文字</button>') + '</p>';
+      h += '<div class="options">' + q.options.map(function (opt, i) {
+        var cls = 'option';
+        if (revealed) cls += opt === q.answer ? ' right' : opt === session.picked ? ' wrong' : ' dim';
+        return '<div class="resp-row">' + speakBtn(opt) +
+          '<button class="' + cls + '" data-option="' + esc(opt) + '"' + (revealed ? ' disabled' : '') + '>(' + 'ABC'.charAt(i) + ')' +
+          (showText ? ' ' + esc(opt) : '') + '</button></div>';
+      }).join('') + '</div>';
+    } else {
+      h += '<div class="prompt"><p class="prompt-sentence">' + blankHtml(d, revealed) + '</p></div>' +
+        '<p class="hint center">' + (item.mode === 'col' ? '選出最自然的搭配' : '選出文法正確的答案') + '</p>';
+      h += optionsHtml(q, true);
+    }
+    if (revealed) h += feedback(d);
+    return h;
+  }
+
+  function drillCard(d) {
+    var h = '<div class="word-card">';
+    if (d.type === 'resp') {
+      h += '<p class="they-label">問句</p><p class="ex">' + esc(d.question) + ' ' + speakBtn(d.question) + '</p>' +
+        '<p class="ex-zh">' + esc(d.zh) + '</p>' +
+        '<p class="they-label">正確回答</p><p class="ex"><b>' + esc(d.answer) + '</b> ' + speakBtn(d.answer) + '</p>';
+    } else {
+      h += '<p class="ex">' + blankHtml(d, true) + ' ' + speakBtn(fillBlank(d)) + '</p>' +
+        (d.zh ? '<p class="ex-zh">' + esc(d.zh) + '</p>' : '');
+    }
+    return h + '<p class="note">💡 ' + esc(d.note) + '</p></div>';
+  }
+
+  function drillRow(d) {
+    return '<li class="word-item"><details><summary><div class="wi-main"><span class="wi-phrase">' +
+      esc(d.sentence || d.question) + '</span><div class="wi-zh">' + MODE_LABEL[d.type] + '</div></div></summary>' +
+      '<div class="detail">' + drillCard(d) + '</div></details></li>';
   }
 
   function phraseQuizHtml(p, item, q) {
@@ -1014,13 +1181,185 @@
     var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
       : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ 明天再複習</div>'
         : '<div class="fb-head ng">✗ 答錯了，稍後會再考一次</div>';
+    var drill = isDrill(w.id);
     if (session.kind === 'free' && r === 'wrong') {
-      head = '<div class="fb-head ng">✗ 答錯了' + (w.type === 'phrase' ? '，再看一次這句' : '，已加入生字本') + '</div>';
+      head = '<div class="fb-head ng">✗ 答錯了' + (drill ? '，看看解析' : w.type === 'phrase' ? '，再看一次這句' : '，已加入生字本') + '</div>';
     }
-    var card = w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
+    var card = drill ? drillCard(w) : w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
     return '<div class="feedback">' + head + card + '</div>' +
       '<button class="btn primary block" data-action="next">下一題</button>' +
       '<button class="btn link report" data-action="report">🚩 這題怪怪的？回報這題</button>';
+  }
+
+  // ---------- 口說跟讀 ----------
+  var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var SHADOW_PASS = 80;   // 分數達到這個百分比算唸對
+
+  // 辨識結果常把縮寫或數字寫成不同形式，比對前統一展開
+  var CONTRACTIONS = {
+    "i'm": 'i am', "it's": 'it is', "that's": 'that is', "what's": 'what is', "where's": 'where is',
+    "who's": 'who is', "there's": 'there is', "here's": 'here is', "let's": 'let us', "don't": 'do not',
+    "doesn't": 'does not', "didn't": 'did not', "can't": 'can not', 'cannot': 'can not', "won't": 'will not',
+    "isn't": 'is not', "aren't": 'are not', "wasn't": 'was not', "i'll": 'i will', "you'll": 'you will',
+    "we'll": 'we will', "i'd": 'i would', "you're": 'you are', "we're": 'we are', "they're": 'they are',
+    "i've": 'i have', "we've": 'we have', "haven't": 'have not', "couldn't": 'could not',
+  };
+  var NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+    'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+
+  function speechPieces(tok) {
+    var t = tok.normalize('NFKC').toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
+    if (!t) return [];
+    if (CONTRACTIONS[t]) return CONTRACTIONS[t].split(' ');
+    if (/^\d+$/.test(t) && +t <= 20) return [NUMBER_WORDS[+t]];
+    return [t];
+  }
+
+  // 用最長共同子序列比對：目標句的每個字有沒有在唸出來的內容裡依序出現
+  function scoreSpeech(target, said) {
+    var tokens = target.split(/\s+/).map(function (text) { return { text: text, pieces: speechPieces(text) }; });
+    var flat = [];
+    tokens.forEach(function (t, i) { t.pieces.forEach(function (p) { flat.push({ p: p, i: i, ok: false }); }); });
+    var spoken = [];
+    said.split(/\s+/).forEach(function (w) { spoken = spoken.concat(speechPieces(w)); });
+    var n = flat.length, m = spoken.length, dp = [];
+    for (var a = 0; a <= n; a++) { dp.push(new Array(m + 1).fill(0)); }
+    for (a = n - 1; a >= 0; a--) {
+      for (var b = m - 1; b >= 0; b--) {
+        dp[a][b] = flat[a].p === spoken[b] ? dp[a + 1][b + 1] + 1 : Math.max(dp[a + 1][b], dp[a][b + 1]);
+      }
+    }
+    a = 0; b = 0;
+    while (a < n && b < m) {
+      if (flat[a].p === spoken[b]) { flat[a].ok = true; a++; b++; }
+      else if (dp[a + 1][b] >= dp[a][b + 1]) a++;
+      else b++;
+    }
+    var matched = flat.filter(function (f) { return f.ok; }).length;
+    return {
+      transcript: said,
+      score: n ? Math.round((matched / n) * 100) : 0,
+      tokens: tokens.map(function (t, i) {
+        return { text: t.text, ok: flat.filter(function (f) { return f.i === i; }).every(function (f) { return f.ok; }) };
+      }),
+    };
+  }
+
+  function startShadow() {
+    var learned = PHRASES.filter(function (p) { return isLearned(p.id); });
+    var pool = learned.length >= 5 ? learned : PHRASES;
+    shadow = { ids: shuffle(pool).slice(0, 10).map(function (p) { return p.id; }), idx: 0, result: null, error: null, listening: false, passed: 0 };
+    renderShadow();
+    window.scrollTo(0, 0);
+  }
+
+  function nextShadow() {
+    stopListening();
+    shadow.idx++;
+    shadow.result = null;
+    shadow.error = null;
+    if (shadow.idx >= shadow.ids.length) shadow.done = true;
+    renderShadow();
+  }
+
+  function exitShadow() {
+    stopListening();
+    shadow = null;
+    render();
+  }
+
+  function stopListening() {
+    if (shadow && shadow.rec) {
+      try { shadow.rec.abort(); } catch (e) { /* 已經停止 */ }
+      shadow.rec = null;
+    }
+    if (shadow) shadow.listening = false;
+  }
+
+  function startListening() {
+    if (!Recognition || !shadow || shadow.listening) return;
+    var p = PHRASE_BY_ID[shadow.ids[shadow.idx]];
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    var rec = new Recognition();
+    rec.lang = state.settings.accent;
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.maxAlternatives = 3;
+    shadow.rec = rec;
+    shadow.listening = true;
+    shadow.result = null;
+    shadow.error = null;
+    rec.onresult = function (e) {
+      var alts = e.results[0];
+      var best = null;
+      for (var i = 0; i < alts.length; i++) {
+        var r = scoreSpeech(p.plain, alts[i].transcript);
+        if (!best || r.score > best.score) best = r;
+      }
+      shadow.result = best;
+      var day = dayRec();
+      day.answered++;
+      save();
+      if (best.score >= SHADOW_PASS) shadow.passed++;
+    };
+    rec.onerror = function (e) {
+      shadow.error = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? '沒有麥克風權限。iPhone 請到「設定 → Safari → 麥克風」允許；Android 請在 Chrome 的網站設定允許麥克風。'
+        : e.error === 'no-speech' ? '沒有聽到聲音，請靠近麥克風再試一次。'
+          : '語音辨識發生問題（' + e.error + '），請再試一次。';
+    };
+    rec.onend = function () {
+      if (!shadow || shadow.rec !== rec) return;
+      shadow.listening = false;
+      shadow.rec = null;
+      if (!shadow.result && !shadow.error) shadow.error = '沒有聽到聲音，請靠近麥克風再試一次。';
+      renderShadow();
+    };
+    try {
+      rec.start();
+    } catch (err) {
+      shadow.listening = false;
+      shadow.error = '無法啟動麥克風，請再試一次。';
+    }
+    renderShadow();
+  }
+
+  function renderShadow() {
+    var h = '<div class="session"><header class="session-head">' +
+      '<button class="icon-btn" data-action="shadow-exit" aria-label="離開">✕</button>' +
+      '<div class="progress thin"><div style="width:' + pct(shadow.idx, shadow.ids.length) + '%"></div></div>' +
+      '<span class="count">' + Math.min(shadow.idx + 1, shadow.ids.length) + '/' + shadow.ids.length + '</span></header>';
+    h += '<main class="session-body">';
+    if (shadow.done) {
+      h += '<div class="summary"><div class="summary-emoji">🎤</div><h1>口說跟讀完成！</h1>' +
+        '<p class="hint center">' + shadow.passed + ' / ' + shadow.ids.length + ' 句達到 ' + SHADOW_PASS + ' 分</p>' +
+        '<button class="btn primary block" data-action="shadow-exit">回到練習</button></div></main></div>';
+      $app.innerHTML = h;
+      return;
+    }
+    var p = PHRASE_BY_ID[shadow.ids[shadow.idx]];
+    var r = shadow.result;
+    h += '<p class="tag">口說跟讀</p>';
+    h += '<div class="prompt"><p class="shadow-target">' +
+      (r ? r.tokens.map(function (t) { return '<span class="' + (t.ok ? 'ok' : 'miss') + '">' + esc(t.text) + '</span>'; }).join(' ') : esc(p.plain)) +
+      '</p>' + speakBtn(p.plain, true) + '<p class="ex-zh">' + esc(p.zh) + '</p></div>';
+    if (!Recognition) {
+      h += '<p class="spell-warn">這個瀏覽器不支援語音辨識，可以先聽發音、自己跟著唸。<br>iPhone 請用 Safari 或從主畫面開啟的 App；Android 請用 Chrome。</p>' +
+        '<button class="btn primary block" data-action="shadow-next">下一句</button>';
+    } else {
+      if (r) {
+        h += '<div class="shadow-result"><p class="shadow-score ' + (r.score >= SHADOW_PASS ? 'ok' : 'ng') + '">' + r.score + ' 分</p>' +
+          '<p class="hint center">' + (r.score === 100 ? '完美！每個字都很清楚' : r.score >= SHADOW_PASS ? '唸得不錯！紅色的字可以再加強' : '紅色的字沒有被聽清楚，再試一次看看') + '</p>' +
+          '<p class="hint center">App 聽到的：「' + esc(r.transcript) + '」</p></div>';
+      }
+      if (shadow.error) h += '<p class="spell-warn" role="alert">' + esc(shadow.error) + '</p>';
+      h += '<button class="mic-btn' + (shadow.listening ? ' on' : '') + '" data-action="shadow-mic"' + (shadow.listening ? ' disabled' : '') + '>' +
+        (shadow.listening ? '聆聽中…請開始唸' : r ? '🎤 再唸一次' : '🎤 按一下開始唸') + '</button>' +
+        '<p class="hint center">先按 🔊 聽一次，再按麥克風跟著唸</p>' +
+        '<button class="btn block" data-action="shadow-next">' + (shadow.idx + 1 < shadow.ids.length ? '下一句' : '完成') + '</button>';
+    }
+    h += '</main></div>';
+    $app.innerHTML = h;
   }
 
   // ---------- 問題回報 ----------
@@ -1035,6 +1374,7 @@
     var it = getItem(item.id);
     var lines = ['【題目回報】', '題型：' + MODE_LABEL[item.mode] + '（' + item.mode + '）', '項目：' + item.id];
     if (item.mode === 'fill') lines.push('例句：' + it.examples[q.exIdx].en);
+    if (isDrill(item.id)) lines.push('題目：' + (it.sentence || it.question));
     if (item.mode === 'p_reply') lines.push('對方說：' + it.q.en);
     if (q && q.options) lines.push('選項：' + q.options.join(' / '));
     if (session.picked) lines.push('我選的：' + session.picked);
@@ -1133,7 +1473,10 @@
     }
     if (s.wrongIds.length) {
       h += '<section class="card"><h2>需要加強的項目</h2><ul class="word-list">' +
-        s.wrongIds.map(function (id) { return isPhrase(id) ? phraseRow(PHRASE_BY_ID[id]) : wordRow(WORD_BY_ID[id]); }).join('') + '</ul></section>';
+        s.wrongIds.map(function (id) {
+          if (isDrill(id)) return drillRow(DRILL_BY_ID[id]);
+          return isPhrase(id) ? phraseRow(PHRASE_BY_ID[id]) : wordRow(WORD_BY_ID[id]);
+        }).join('') + '</ul></section>';
     }
     h += '<button class="btn primary block" data-action="exit">回到首頁</button></main></div>';
     $app.innerHTML = h;
@@ -1167,8 +1510,13 @@
     if (t.dataset.tab) {
       currentTab = t.dataset.tab;
       currentScene = null;
+      practiceSub = null;
       render();
       window.scrollTo(0, 0);
+      return;
+    }
+    if (t.dataset.drill) {
+      startDrill(t.dataset.drill);
       return;
     }
     if (t.dataset.scene) {
@@ -1223,6 +1571,14 @@
         break;
       }
       case 'start-mistakes': startMistakes(); break;
+      case 'open-mistakes': practiceSub = 'mistakes'; render(); window.scrollTo(0, 0); break;
+      case 'practice-back': practiceSub = null; render(); window.scrollTo(0, 0); break;
+      case 'speak-all': speakQueue(respSpeechList(getItem(currentItem().id), session.q)); break;
+      case 'show-text': session.showText = true; renderSession(); break;
+      case 'start-shadow': startShadow(); break;
+      case 'shadow-mic': startListening(); break;
+      case 'shadow-next': nextShadow(); break;
+      case 'shadow-exit': exitShadow(); break;
       case 'start-free': {
         var cat = document.getElementById('free-cat').value;
         var mode = document.getElementById('free-mode').value;
@@ -1328,6 +1684,8 @@
   }
 
   // ---------- 啟動 ----------
+  // 給自動測試使用的內部函式
+  window.TOEIC_APP = { scoreSpeech: scoreSpeech };
   render();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
