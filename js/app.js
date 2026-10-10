@@ -621,7 +621,7 @@
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
     h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
     h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
-    h += '<p class="footer">多益練習 App v0.2 · 單字 ' + WORDS.length + ' 個</p>';
+    h += '<p class="footer">多益練習 App v0.2.1 · 單字 ' + WORDS.length + ' 個</p>';
     return h;
   }
 
@@ -898,7 +898,8 @@
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* 離線功能不可用 */ });
+      // updateViaCache: 'none' 讓瀏覽器檢查 sw.js 更新時不使用 HTTP 快取
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () { /* 離線功能不可用 */ });
     });
   }
 })();

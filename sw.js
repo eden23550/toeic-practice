@@ -1,5 +1,5 @@
 // 修改 App 檔案後請更新版本號，讓使用者拿到新版
-var CACHE = 'toeic-practice-v0.2.0';
+var CACHE = 'toeic-practice-v0.2.1';
 var FILES = [
   './',
   'index.html',
@@ -13,7 +13,10 @@ var FILES = [
 ];
 
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));
+  // cache: 'reload' 略過瀏覽器的 HTTP 快取，確保存進來的是最新檔案
+  e.waitUntil(caches.open(CACHE).then(function (c) {
+    return c.addAll(FILES.map(function (f) { return new Request(f, { cache: 'reload' }); }));
+  }));
   self.skipWaiting();
 });
 
@@ -27,10 +30,11 @@ self.addEventListener('activate', function (e) {
 });
 
 // 先用網路取得最新版本，離線時改用快取
+// cache: 'no-cache' 讓瀏覽器每次都向伺服器確認檔案有沒有更新（GitHub Pages 預設會快取 10 分鐘）
 self.addEventListener('fetch', function (e) {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    fetch(e.request, { cache: 'no-cache' }).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       return res;
