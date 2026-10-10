@@ -22,6 +22,7 @@
 - **情境對話**：同一個情境裡，每句「對方說的話」只能對應一個回答。
 - **KK 音標**：新增單字時用 CMUdict 比對重音（`pip install cmudict`）；單音節字不標重音。
 - 使用者用 iPhone（從主畫面開啟），朋友用 Android。發音依賴裝置內建的 Web Speech API。
+- **問題回報**走 Google 表單（`REPORT_FORM_URL`，不需登入，回覆在使用者自己的 Google 帳號）。表單沒有預先填入的題目代號，所以 App 是先複製資訊，再讓使用者點連結打開表單、貼上。打開表單要用 `<a>` 連結，不要用 `window.open`，iPhone 會擋。
 
 ## 測試
 

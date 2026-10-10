@@ -426,17 +426,38 @@ select, .search, .spell-form input {
 .btn.link.report { font-size: 0.85rem; margin-top: 4px; }
 .err-count { color: var(--muted); }
 a.btn { color: inherit; }
-.toast {
+
+/* 回報視窗 */
+.sheet-backdrop {
   position: fixed;
-  left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  max-width: calc(100% - 32px);
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: var(--text);
-  color: var(--bg);
-  font-size: 0.9rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  z-index: 50;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 40;
 }
+.sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet-status { font-weight: 700; margin: 4px 0 8px; }
+.sheet-steps { margin: 0 0 4px; padding-left: 20px; color: var(--muted); font-size: 0.95rem; }
+.sheet-steps li { margin-bottom: 4px; }
+.sheet-raw { margin-top: 12px; font-size: 0.9rem; }
+.sheet-raw summary { color: var(--muted); cursor: pointer; }
+.sheet-raw textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.8rem;
+}
+.hint a { color: var(--accent); }

@@ -16,10 +16,12 @@
   function speechText(id) { var it = getItem(id); return it.type === 'phrase' ? it.plain : it.word; }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.3.1';
+  var APP_VERSION = '0.3.2';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
+  // 不需要登入的 Google 表單；App 會先複製題目資訊，讓使用者貼進表單
+  var REPORT_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfz_i_0iS4KOdqzezJpXvbfaOZkrSCFq2qHggGOqSFeVaitDQ/viewform';
   // 各記憶等級答對後的下次複習間隔（天）
   var INTERVALS = [0, 1, 3, 7, 14, 30, 60];
   var MAX_LEVEL = INTERVALS.length - 1;
@@ -822,11 +824,12 @@
 
     var errCount = readErrors().length;
     h += '<section class="card"><h2>問題回報</h2>' +
-      '<p class="hint">題目有問題時，作答後按「🚩 回報這題」。App 出錯時，按下面的按鈕複製錯誤紀錄，貼給開發者或到 GitHub 回報。</p>' +
+      '<p class="hint">題目有問題時，作答後按「🚩 回報這題」。App 出錯時，按「複製錯誤紀錄」，再貼到回報表單。都不需要登入。</p>' +
       '<p class="row">錯誤紀錄<span class="err-count">' + errCount + ' 筆</span></p>' +
       '<div class="btn-row"><button class="btn" data-action="copy-errors">複製錯誤紀錄</button>' +
       (errCount ? '<button class="btn" data-action="clear-errors">清除</button>' : '') + '</div>' +
-      '<a class="btn block" href="' + ISSUE_URL + '" target="_blank" rel="noopener">到 GitHub 回報問題</a></section>';
+      '<button class="btn primary block" data-action="report-general">回報問題或建議</button>' +
+      '<p class="hint">有 GitHub 帳號的話，也可以<a href="' + ISSUE_URL + '" target="_blank" rel="noopener">到 GitHub 回報</a>。</p></section>';
 
     h += '<section class="card"><h2>資料</h2><p class="hint">練習紀錄只存在這台裝置的瀏覽器，建議定期匯出備份。</p>';
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
@@ -1041,19 +1044,8 @@
     }).join('\n\n') : '（沒有錯誤紀錄）'].join('\n');
   }
 
-  function toast(msg) {
-    var old = document.querySelector('.toast');
-    if (old) old.remove();
-    var el = document.createElement('div');
-    el.className = 'toast';
-    el.setAttribute('role', 'status');
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(function () { el.remove(); }, 3000);
-  }
-
-  // 優先用剪貼簿 API；不支援時改用舊方法，再不行就跳出視窗讓使用者手動複製
-  function copyText(text, okMsg) {
+  // 優先用剪貼簿 API，不支援時改用舊方法；done(true/false) 回報是否成功
+  function copyToClipboard(text, done) {
     var fallback = function () {
       var ta = document.createElement('textarea');
       ta.value = text;
@@ -1065,14 +1057,47 @@
       var ok = false;
       try { ok = document.execCommand('copy'); } catch (e) { /* 不支援 */ }
       ta.remove();
-      if (ok) toast(okMsg);
-      else window.prompt('請長按複製以下內容：', text);
+      done(ok);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fallback);
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
     } else {
       fallback();
     }
+  }
+
+  // 回報視窗：先複製資訊，再讓使用者自己點連結打開表單
+  // （用真的連結而不是 window.open，iPhone 才不會把它當成彈出視窗擋掉）
+  function openReport(text, what) {
+    closeSheet();
+    var el = document.createElement('div');
+    el.className = 'sheet-backdrop';
+    el.setAttribute('data-close-sheet', '');
+    el.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
+      '<h2 id="sheet-title">回報問題</h2>' +
+      '<p class="sheet-status">正在複製' + esc(what) + '…</p>' +
+      '<ol class="sheet-steps"><li>按下面的按鈕打開回報表單（不用登入）</li>' +
+      '<li>選擇回報類型，寫下哪裡有問題</li>' +
+      '<li>在「題目或錯誤資訊」長按<b>貼上</b>，然後送出</li></ol>' +
+      '<a class="btn primary block" href="' + REPORT_FORM_URL + '" target="_blank" rel="noopener" data-close-sheet>打開回報表單</a>' +
+      '<details class="sheet-raw"><summary>沒有複製成功？點這裡手動複製</summary><textarea readonly rows="8"></textarea></details>' +
+      '<button class="btn link" data-close-sheet>關閉</button></div>';
+    el.querySelector('textarea').value = text;
+    document.body.appendChild(el);
+    copyToClipboard(text, function (ok) {
+      var status = el.querySelector('.sheet-status');
+      if (ok) {
+        status.textContent = '✅ 已複製' + what;
+      } else {
+        status.textContent = '⚠️ 沒辦法自動複製，請展開下方的內容手動複製';
+        el.querySelector('.sheet-raw').open = true;
+      }
+    });
+  }
+
+  function closeSheet() {
+    var el = document.querySelector('.sheet-backdrop');
+    if (el) el.remove();
   }
 
   function renderSummary() {
@@ -1095,6 +1120,13 @@
 
   // ---------- 事件 ----------
   document.addEventListener('click', function (e) {
+    var closer = e.target.closest('[data-close-sheet]');
+    if (closer && (closer.tagName !== 'DIV' || e.target === closer)) {
+      // 點連結時不要擋住預設行為，表單才能正常打開
+      setTimeout(closeSheet);
+      if (closer.tagName !== 'A') return;
+    }
+    if (document.querySelector('.sheet-backdrop')) return;
     var t = e.target.closest('button, [data-tab]');
     if (!t) return;
 
@@ -1181,8 +1213,9 @@
       case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
       case 'give-up': session.spellInput = ''; answer('wrong'); break;
       case 'export': exportData(); break;
-      case 'report': copyText(reportText(), '已複製題目資訊，貼給開發者就可以了'); break;
-      case 'copy-errors': copyText(errorReportText(), '已複製錯誤紀錄'); break;
+      case 'report': openReport(reportText(), '題目資訊'); break;
+      case 'copy-errors': openReport(errorReportText(), '錯誤紀錄'); break;
+      case 'report-general': openReport('【一般回報】\n\n' + deviceInfo(), '裝置資訊'); break;
       case 'clear-errors':
         try { localStorage.removeItem(ERROR_KEY); } catch (err) { /* 儲存空間不可用 */ }
         render();
@@ -1222,6 +1255,8 @@
   });
 
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeSheet(); return; }
+    if (document.querySelector('.sheet-backdrop')) return;
     if (!session || e.key !== 'Enter') return;
     if (document.activeElement && document.activeElement.id === 'spell-input') return;
     var next = document.querySelector('[data-action="next"]');
