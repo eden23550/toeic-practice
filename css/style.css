@@ -392,6 +392,7 @@ select, .search, .spell-form input {
 .spell-form { display: flex; gap: 8px; margin-top: 12px; }
 .spell-form input { flex: 1; font-size: 1.15rem; }
 .your-answer { text-align: center; color: var(--muted); }
+.spell-warn { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 0.9rem; }
 
 .rate-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .rate-wrong { color: var(--ng); border-color: var(--ng); background: var(--ng-soft); }
