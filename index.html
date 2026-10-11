@@ -13,6 +13,15 @@
   <meta name="apple-mobile-web-app-title" content="多益單字">
   <link rel="stylesheet" href="css/style.css">
   <script>
+    // 在畫面出現前套用使用者選的外觀（深色／淺色），避免打開時先閃一下白色
+    (function () {
+      try {
+        var theme = (JSON.parse(localStorage.getItem('toeic-practice-v1') || '{}').settings || {}).theme;
+        if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* 讀不到就跟隨系統 */ }
+    })();
+  </script>
+  <script>
     // 記錄執行時發生的錯誤，可以在「設定 → 問題回報」複製給開發者。
     // 放在所有程式之前，才能連載入單字庫時的錯誤也抓到。
     (function () {

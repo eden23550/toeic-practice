@@ -22,8 +22,9 @@
   --radius: 14px;
 }
 
+/* 深色模式：設定選「跟隨系統」時依手機外觀切換，選「深色」時一律使用 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1419;
     --surface: #1a2129;
     --surface-2: #232c36;
@@ -41,8 +42,31 @@
     --warn-soft: #3a2e10;
     --st-new: #4b5663;
     --shadow: none;
+    color-scheme: dark;
   }
 }
+
+:root[data-theme="dark"] {
+  --bg: #0f1419;
+  --surface: #1a2129;
+  --surface-2: #232c36;
+  --text: #e6ebf0;
+  --muted: #93a0ad;
+  --border: #2d3742;
+  --accent: #2dd4bf;
+  --accent-soft: #123a37;
+  --accent-text: #062a26;
+  --ok: #4ade80;
+  --ok-soft: #12321f;
+  --ng: #fb923c;
+  --ng-soft: #3a2015;
+  --warn: #fbbf24;
+  --warn-soft: #3a2e10;
+  --st-new: #4b5663;
+  --shadow: none;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 

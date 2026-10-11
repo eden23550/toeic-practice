@@ -40,7 +40,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.4.0';
+  var APP_VERSION = '0.4.1';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -114,7 +114,7 @@
   // ---------- 資料儲存 ----------
   function defaultState() {
     return {
-      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true },
+      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto' },
       words: {},
       daily: {},
     };
@@ -585,7 +585,25 @@
   // ---------- 畫面 ----------
   var $app = document.getElementById('app');
 
+  // 外觀：auto 跟隨手機系統，light／dark 由使用者指定
+  var THEME_COLORS = { light: '#0f766e', dark: '#0f1419' };
+  function applyTheme() {
+    var theme = state.settings.theme;
+    var root = document.documentElement;
+    if (theme === 'dark' || theme === 'light') root.setAttribute('data-theme', theme);
+    else root.removeAttribute('data-theme');
+    var dark = theme === 'dark' || (theme !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? THEME_COLORS.dark : THEME_COLORS.light);
+  }
+
+  if (window.matchMedia) {
+    var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
+  }
+
   function render() {
+    applyTheme();
     if (session) { renderSession(); return; }
     if (shadow) { renderShadow(); return; }
     var body = '';
@@ -923,6 +941,11 @@
   function viewSettings() {
     var s = state.settings;
     var h = '<header class="page-head"><h1>設定</h1></header>';
+    h += '<section class="card"><h2>外觀</h2>' +
+      '<label class="row">顯示模式<select id="set-theme">' + [['auto', '跟隨系統'], ['light', '淺色'], ['dark', '深色']].map(function (t) {
+        return '<option value="' + t[0] + '"' + (t[0] === (s.theme || 'auto') ? ' selected' : '') + '>' + t[1] + '</option>';
+      }).join('') + '</select></label>' +
+      '<p class="hint">「跟隨系統」會依照手機的深色／淺色外觀自動切換。</p></section>';
     h += '<section class="card"><h2>學習</h2>';
     h += '<label class="row">每日新字數量<select id="set-daily">' + [5, 10, 15, 20, 25, 30, 40, 50].map(function (n) {
       return '<option' + (n === s.dailyNew ? ' selected' : '') + '>' + n + '</option>';
@@ -1638,6 +1661,7 @@
     else if (id === 'set-accent') s.accent = e.target.value;
     else if (id === 'set-rate') s.rate = +e.target.value;
     else if (id === 'set-auto') s.autoSpeak = e.target.checked;
+    else if (id === 'set-theme') { s.theme = e.target.value; applyTheme(); }
     else if (id === 'import-file') { importData(e.target.files[0]); return; }
     else return;
     save();
