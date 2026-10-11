@@ -182,6 +182,54 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="exit"]');
     });
 
+    await step('作答後顯示每個選項的意思：答錯展開、答對收起', async () => {
+      const notes = () => page.$$eval('.option-notes li', (lis) => lis.map((li) => ({
+        cls: li.className, main: li.querySelector('b').textContent, text: li.textContent,
+      })));
+      // 英選中故意答錯：每個中文選項要標出對應的英文字
+      await page.click('[data-tab="home"]');
+      await page.selectOption('#free-mode', 'en2zh');
+      await page.selectOption('#free-scope', 'all');
+      await page.click('[data-action="start-free"]');
+      const word = (await page.textContent('.prompt-word')).trim();
+      const answer = await page.evaluate((w) => window.TOEIC_WORDS.find((x) => x.word === w).zh, word);
+      const wrong = await page.$$eval('.option', (os, a) => os.map((o) => o.dataset.option).find((o) => o !== a), answer);
+      await page.click(`.option[data-option="${wrong}"]`);
+      expect(await page.$('.notes-box[open]'), '答錯時選項解析應該直接展開');
+      let list = await notes();
+      expect(list.length === 4, '應該列出 4 個選項');
+      for (const n of list) {
+        const w = await page.evaluate((zh) => window.TOEIC_WORDS.find((x) => x.zh === zh), n.main);
+        expect(w && n.text.includes(w.word), `「${n.main}」應該標出英文 ${w && w.word}`);
+      }
+      expect(list.find((n) => n.main === answer).cls === 'right', '正確答案應該標成綠色');
+      expect(list.find((n) => n.main === wrong).cls === 'wrong', '選錯的選項應該標成紅色');
+      await page.click('[data-action="exit"]');
+
+      // 中選英答對：解析收起來，英文選項標出詞性和中文
+      await page.selectOption('#free-mode', 'zh2en');
+      await page.click('[data-action="start-free"]');
+      const zh = (await page.textContent('.prompt-zh')).replace(/^\S+\s/, '').trim();
+      const en = await page.evaluate((zh) => window.TOEIC_WORDS.find((w) => w.zh === zh).word, zh);
+      await page.click(`.option[data-option="${en}"]`);
+      expect(await page.$('.notes-box:not([open])'), '答對時選項解析應該收起來');
+      list = await notes();
+      for (const n of list) {
+        const w = await page.evaluate((word) => window.TOEIC_WORDS.find((x) => x.word === word), n.main);
+        expect(n.text.includes(w.zh) && n.text.includes(w.pos), `「${n.main}」應該標出詞性和中文`);
+      }
+      await page.click('[data-action="exit"]');
+
+      // 詞性填空：每個選項都有詞性
+      await page.selectOption('#free-mode', 'fill');
+      await page.click('[data-action="start-free"]');
+      await page.click('.option >> nth=0');
+      list = await notes();
+      expect(list.length === (await page.$$('.option')).length, '每個選項都要有解析');
+      list.forEach((n) => expect(/(n|v|adj|adv)\./.test(n.text), `「${n.main}」應該標出詞性：${n.text}`));
+      await page.click('[data-action="exit"]');
+    });
+
     await step('完成一輪每日句型練習', async () => {
       await page.click('[data-tab="home"]');
       await page.click('[data-action="start-phrases"]');

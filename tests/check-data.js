@@ -6,6 +6,7 @@ const path = require('path');
 
 global.window = {};
 require(path.join(__dirname, '../js/words.js'));
+require(path.join(__dirname, '../js/forms.js'));
 require(path.join(__dirname, '../js/phrases.js'));
 require(path.join(__dirname, '../js/toeic.js'));
 require(path.join(__dirname, '../js/journey.js'));
@@ -17,6 +18,7 @@ const fail = (where, msg) => errors.push(`${where}: ${msg}`);
 const POS = ['n.', 'v.', 'adj.', 'adv.'];
 const words = window.TOEIC_WORDS;
 const wordIds = new Set();
+const wordSet = new Set(words.map((w) => w.word));
 
 window.TOEIC_CATEGORIES.forEach((cat) => {
   if (!cat.id || !cat.name || !cat.icon) fail(`分類 ${cat.id}`, '缺少 id、name 或 icon');
@@ -52,8 +54,23 @@ words.forEach((w) => {
     if (new Set(w.forms).size !== w.forms.length) fail(where, '干擾選項有重複');
     w.forms.forEach((f) => {
       if (f.toLowerCase() === w.word.toLowerCase()) fail(where, `干擾選項「${f}」和答案相同`);
+      if (!wordSet.has(f) && !window.WORD_FORMS[f]) fail(where, `干擾選項「${f}」沒有寫在 js/forms.js（作答後要顯示詞性和中文）`);
     });
   }
+});
+
+// js/forms.js：每一筆都要有詞性和中文、確實被用到，單字庫已經有的字不用重複寫
+const usedForms = new Set();
+words.forEach((w) => (w.forms || []).forEach((f) => usedForms.add(f)));
+const formKeys = [...require('fs').readFileSync(path.join(__dirname, '../js/forms.js'), 'utf8').matchAll(/^\s+'?([\w-]+)'?:\s*\[/gm)].map((m) => m[1]);
+formKeys.filter((k, i) => formKeys.indexOf(k) !== i).forEach((k) => fail(`forms.js「${k}」`, '重複出現，後面的會蓋掉前面的'));
+Object.keys(window.WORD_FORMS).forEach((f) => {
+  const info = window.WORD_FORMS[f];
+  const where = `forms.js「${f}」`;
+  if (!Array.isArray(info) || info.length !== 2 || !info[0] || !info[1]) fail(where, '格式要是 [詞性, 中文]');
+  else if (!/^(n|v|adj|adv)\.(\/(n|v|adj|adv)\.)*$/.test(info[0])) fail(where, `詞性「${info[0]}」格式不對`);
+  if (!usedForms.has(f)) fail(where, '沒有任何單字用到這個干擾選項');
+  if (wordSet.has(f)) fail(where, '單字庫已經有這個字，不用寫在 forms.js');
 });
 
 // ---------- 句型 ----------
