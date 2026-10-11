@@ -661,3 +661,21 @@ button.stop-btn { cursor: pointer; }
 .option-notes li.wrong b { color: var(--ng); }
 .on-main { display: flex; flex-direction: column; min-width: 0; }
 .on-sub { color: var(--muted); font-size: 0.85rem; }
+
+/* 打出整句 */
+.type-form { display: grid; gap: 10px; margin-bottom: 8px; }
+.type-form textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  resize: vertical;
+}
+.typed-diff { font-size: 1.15rem; font-weight: 600; line-height: 1.6; margin: 0 0 4px; }
+.typed-diff .ok { color: var(--ok); }
+.typed-diff .typo, .hint .typo { color: var(--warn); text-decoration: underline dotted; text-underline-offset: 4px; }
+.typed-diff .miss, .hint .miss { color: var(--ng); text-decoration: underline wavy; text-underline-offset: 4px; }

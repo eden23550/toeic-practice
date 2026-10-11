@@ -102,16 +102,27 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.fill('#spell-input', correct ? '' : 'zzz');
       if (correct) await page.click('[data-action="give-up"]');
       else await page.press('#spell-input', 'Enter');
-    } else if (await page.$('[data-action="order-check"]')) {
+    } else if (await page.$('#type-input')) {
       const zh = (await page.textContent('.prompt-zh')).trim();
-      const tokens = await page.evaluate((zh) => window.PHRASES.find((p) => p.zh === zh).plain.split(' '), zh);
-      const order = correct ? tokens : tokens.slice().reverse();
-      for (const tk of order) {
-        await page.evaluate((tk) => {
-          const b = [...document.querySelectorAll('.order-pool .token:not(.used)')].find((x) => x.textContent === tk);
-          b.click();
-        }, tk);
+      const plain = await page.evaluate((zh) => window.PHRASES.find((p) => p.zh === zh).plain, zh);
+      await page.fill('#type-input', correct ? plain : 'zzz qqq www xxx');
+      await page.press('#type-input', 'Enter');
+    } else if (await page.$('[data-action="order-check"]')) {
+      // 依句子由左到右，找出開頭吻合的塊（有干擾字，所以不能只看單字有沒有出現）
+      const zh = (await page.textContent('.prompt-zh')).trim();
+      const plain = await page.evaluate((zh) => window.PHRASES.find((p) => p.zh === zh).plain, zh);
+      const pool = await page.$$eval('.order-pool .token', (bs) => bs.map((b) => b.textContent));
+      const picks = [];
+      let rest = plain;
+      const left = pool.map((t, i) => i);
+      while (rest) {
+        const k = left.findIndex((i) => rest === pool[i] || rest.startsWith(pool[i] + ' '));
+        if (k < 0) throw new Error('排不出句子：' + plain + '｜' + pool.join(' / '));
+        picks.push(left[k]);
+        rest = rest.slice(pool[left[k]].length).trim();
+        left.splice(k, 1);
       }
+      for (const i of correct ? picks : picks.slice().reverse()) await page.click(`.order-pool .token >> nth=${i}`);
       await page.click('[data-action="order-check"]');
     } else if (await page.$('.option:not([disabled])')) {
       await page.click('.option >> nth=0');
@@ -238,6 +249,43 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="exit"]');
     });
 
+    await step('句子重組：每句都有干擾字，長句子用片語分組，干擾字不會和句子裡的字重複', async () => {
+      const problems = await page.evaluate(() => {
+        const bad = [];
+        const key = (u) => u.toLowerCase().replace(/[^a-z' ]/g, '');
+        window.PHRASES.forEach((p) => {
+          for (let r = 0; r < 5; r++) {
+            const o = window.TOEIC_APP.orderPieces(p);
+            if (o.units.join(' ') !== p.plain) bad.push('分塊後接不回原句：' + p.plain);
+            if (o.units.length > 10) bad.push('塊太多：' + p.plain);
+            if (!o.extra.length) bad.push('沒有干擾字：' + p.plain);
+            const keys = o.units.map(key);
+            o.extra.forEach((x) => { if (keys.includes(key(x))) bad.push(`干擾字「${x}」和句子裡的字重複：` + p.plain); });
+          }
+        });
+        return [...new Set(bad)];
+      });
+      expect(!problems.length, problems.slice(0, 5).join('\n'));
+    });
+
+    await step('打出整句的評分：大小寫、標點、縮寫、小錯字不算錯，少字算模糊', async () => {
+      const cases = [
+        ["No, I don't have anything to declare.", 'no i dont have anything to declare', 'correct'],
+        ["No, I don't have anything to declare.", 'No, I do not have anything to declare', 'correct'],
+        ["No, I don't have anything to declare.", "No I don't have anythng to declare", 'correct', 1],
+        ["No, I don't have anything to declare.", 'No I have anything to declare', 'fuzzy'],
+        ["No, I don't have anything to declare.", 'I have nothing', 'wrong'],
+        ["I'm here on a working holiday visa.", 'I am here on a student visa', 'correct'],
+        ["I'm planning to stay for about a year.", "I'm planning to stay for about a year a year", 'fuzzy'],
+        ["I'm planning to stay for about a year.", "I'm planning to stay for about a year or a month", 'wrong'],
+      ];
+      for (const [target, typed, expected, typos = 0] of cases) {
+        const r = await page.evaluate(({ target, typed }) =>
+          window.TOEIC_APP.gradeTyped(window.PHRASES.find((p) => p.plain === target), typed), { target, typed });
+        expect(r.result === expected && r.typos === typos, `「${typed}」應該是 ${expected}（小錯字 ${typos}），實際是 ${r.result}（小錯字 ${r.typos}）`);
+      }
+    });
+
     for (const [type, name] of [['resp', 'Part 2 聽力應答'], ['gram', 'Part 5 文法'], ['col', '搭配詞']]) {
       await step(`多益題型：${name}（答對與答錯都能判斷）`, async () => {
         await page.click('[data-tab="practice"]');
@@ -345,6 +393,47 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       }
       expect(results.length === 2, '沒有抽到句子重組題');
       results.forEach(([correct, judged]) => expect(correct === judged, `排${correct ? '對' : '錯'}卻判成${judged ? '對' : '錯'}`));
+    });
+
+    await step('打出整句：熟悉的句子會考打字，打錯會標出錯的字', async () => {
+      // 讓已學過的句型都變成「熟悉」並且今天到期
+      const setLevel = () => page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('toeic-practice-v1'));
+        const d = new Date(); const t = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        Object.keys(s.words).filter((k) => k.startsWith('p:')).forEach((k) => { s.words[k].level = 3; s.words[k].due = t; });
+        localStorage.setItem('toeic-practice-v1', JSON.stringify(s));
+      });
+      let typedWrong = false, typedRight = false;
+      for (let round = 0; round < 6 && !(typedWrong && typedRight); round++) {
+        await setLevel();
+        await page.reload();
+        await page.click('[data-tab="phrases"]');
+        await page.click('[data-action="start-phrases"]');
+        for (let i = 0; i < 40 && !(await page.$('.summary')); i++) {
+          if (await page.$('#type-input')) {
+            expect((await page.getAttribute('#type-input', 'autocorrect')) === 'off', '打字框應該關掉自動修正');
+            if (!typedWrong) {
+              await page.fill('#type-input', 'ㄅㄆㄇ');
+              await page.press('#type-input', 'Enter');
+              expect(await page.isVisible('.spell-warn'), '打注音應該提醒切換鍵盤');
+              await page.fill('#type-input', 'hello there my friend');
+              await page.press('#type-input', 'Enter');
+              expect((await text('.fb-head')).startsWith('✗'), '亂打應該算錯');
+              expect(await page.$('.typed-diff .miss'), '應該標出沒打到的字');
+              typedWrong = true;
+            } else {
+              await answerCurrent(true);
+              expect((await text('.fb-head')).startsWith('✓'), '打對應該算對');
+              typedRight = true;
+            }
+          } else {
+            await answerCurrent();
+          }
+          await page.click('[data-action="next"]');
+        }
+        if (await page.$('[data-action="exit"]')) await page.click('[data-action="exit"]');
+      }
+      expect(typedWrong && typedRight, '沒有抽到打出整句的題目');
     });
 
     // 回報視窗：確認表單連結帶入了正確的回報類型、資訊與裝置，手動複製可用，並可關閉

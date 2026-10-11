@@ -43,7 +43,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.5.1';
+  var APP_VERSION = '0.6.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -70,11 +70,11 @@
 
   var MODE_LABEL = {
     en2zh: '英選中', zh2en: '中選英', fill: '詞性填空', spell: '拼字', card: '單字卡', listen: '聽力',
-    p_listen: '聽句子', p_zh2en: '中翻英', p_order: '句子重組', p_reply: '情境對話',
+    p_listen: '聽句子', p_zh2en: '中翻英', p_order: '句子重組', p_reply: '情境對話', p_type: '打出整句',
     col: '搭配詞', gram: 'Part 5 文法', resp: 'Part 2 聽力應答',
   };
   var PHRASE_MODES = ['p_listen', 'p_zh2en', 'p_order', 'p_reply'];
-  var ORDER_MAX_WORDS = 10;
+  var ORDER_MAX_WORDS = 10;   // 超過這個字數的句子，重組時改用 2～3 個字一組
 
   // ---------- 工具函式 ----------
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -295,7 +295,6 @@
     if (isPhrase(id)) {
       var p = PHRASE_BY_ID[id];
       if (mode === 'p_reply' && !p.q) return 'p_zh2en';
-      if (mode === 'p_order' && p.plain.split(' ').length > ORDER_MAX_WORDS) return 'p_zh2en';
       if (mode === 'p_listen' && !canSpeak) return 'p_zh2en';
       return mode;
     }
@@ -306,18 +305,90 @@
   }
 
   // 句型的干擾選項優先從同一個情境挑；情境對話題只用其他「回答」當選項
+  // 英文選項挑「看起來像」的句子（開頭相同、長度相近、有共同的字），不能只看開頭或長短就猜到答案
   function phraseDistractors(p, field, n, repliesOnly) {
-    var ok = function (x) { return x.id !== p.id && (!repliesOnly || x.q); };
-    var same = shuffle(PHRASES.filter(function (x) { return ok(x) && x.scene === p.scene; }));
-    var other = shuffle(PHRASES.filter(function (x) { return ok(x) && x.scene !== p.scene; }));
+    var ok = function (x) { return x.id !== p.id && x.zh !== p.zh && (!repliesOnly || x.q); };
+    var words = function (x) { return x.plain.toLowerCase().replace(/[^a-z' ]/g, '').split(' '); };
+    var mine = words(p);
+    var score = function (x) {
+      var theirs = words(x);
+      var sc = (x.scene === p.scene ? 1 : 0) + Math.random() * 1.5;
+      if (field === 'plain') {
+        if (theirs[0] === mine[0]) sc += 3;
+        sc += theirs.filter(function (w) { return w.length > 2 && mine.indexOf(w) >= 0; }).length * 0.8;
+        sc -= Math.abs(theirs.length - mine.length) / 3;
+      }
+      return sc;
+    };
+    var pool = PHRASES.filter(ok).map(function (x) { return { x: x, sc: score(x) }; })
+      .sort(function (a, b) { return b.sc - a.sc; });
     var used = {};
     used[p[field]] = true;
     var out = [];
-    same.concat(other).some(function (x) {
-      if (!used[x[field]]) { used[x[field]] = true; out.push(x); }
+    pool.some(function (c) {
+      if (!used[c.x[field]]) { used[c.x[field]] = true; out.push(c.x); }
       return out.length >= n;
     });
     return out;
+  }
+
+  // ---------- 句子重組的干擾字 ----------
+  // 只用「換進句子一定錯」的字（主詞動詞一致、代名詞主格受格、a/an 等），
+  // 不用 in/at、to/for 這種有時兩個都對的字，避免排出另一個也說得通的句子卻被判錯
+  var CONFUSABLE = {
+    'do': 'does', 'does': 'do', "don't": "doesn't", "doesn't": "don't", 'is': 'are', 'are': 'is',
+    "isn't": "aren't", "aren't": "isn't", 'was': 'were', 'were': 'was', 'have': 'has', 'has': 'have',
+    'a': 'an', 'an': 'a', 'i': 'me', 'me': 'I', 'he': 'him', 'him': 'he', 'she': 'her', 'they': 'them',
+    'them': 'they', 'we': 'us', 'us': 'we', 'much': 'many', 'many': 'much',
+  };
+  var NOUNS = WORDS.filter(function (w) { return w.pos === 'n.' && /^[a-z]+$/.test(w.word); }).map(function (w) { return w.word; });
+
+  // 把一個字（或一組字）裡可以混淆的字換掉，大小寫和標點照原本的樣子
+  function swapConfusable(unit) {
+    var parts = unit.split(' ');
+    var idx = shuffle(parts.map(function (x, i) { return i; }));
+    for (var k = 0; k < idx.length; k++) {
+      var m = parts[idx[k]].match(/^([^A-Za-z']*)([A-Za-z']+)([^A-Za-z']*)$/);
+      if (!m) continue;
+      var alt = CONFUSABLE[m[2].toLowerCase()];
+      if (!alt) continue;
+      if (/^[A-Z]/.test(m[2]) && m[2] !== 'I' && alt !== 'I') alt = alt.charAt(0).toUpperCase() + alt.slice(1);
+      var copy = parts.slice();
+      copy[idx[k]] = m[1] + alt + m[3];
+      return copy.join(' ');
+    }
+    return null;
+  }
+
+  // 重組題的單位：10 個字以內一個字一塊，長句子 2～3 個字一組；再加上 2～3 個干擾字
+  function orderPieces(p) {
+    var wordsList = p.plain.split(' ');
+    var units = wordsList;
+    if (wordsList.length > ORDER_MAX_WORDS) {
+      var size = wordsList.length > 16 ? 3 : 2;
+      units = [];
+      for (var i = 0; i < wordsList.length; i += size) units.push(wordsList.slice(i, i + size).join(' '));
+      // 最後只剩一個字就併到前一組
+      if (units.length > 1 && units[units.length - 1].indexOf(' ') < 0) units[units.length - 2] += ' ' + units.pop();
+    }
+    // 比較時忽略大小寫和標點，避免出現 me 和 me, 這種看起來一樣的塊
+    var key = function (u) { return u.toLowerCase().replace(/[^a-z' ]/g, ''); };
+    var taken = {};
+    units.forEach(function (u) { taken[key(u)] = true; });
+    var extra = [];
+    shuffle(units).some(function (u) {
+      var alt = swapConfusable(u);
+      if (alt && !taken[key(alt)]) { taken[key(alt)] = true; extra.push(alt); }
+      return extra.length >= 2;
+    });
+    // 一個字一塊時，再補單字庫裡的名詞湊滿 3 個干擾字（動詞、介系詞可能換進句子還說得通，所以不用）
+    if (units === wordsList) {
+      shuffle(NOUNS).some(function (w) {
+        if (!taken[w]) { taken[w] = true; extra.push(w); }
+        return extra.length >= 3;
+      });
+    }
+    return { units: units, extra: extra };
   }
 
   // 選擇題的選項和它們的來源（單字或句型），作答後用來顯示每個選項的意思
@@ -344,14 +415,16 @@
     } else if (mode === 'p_zh2en' || mode === 'p_reply') {
       setOptions(q, p, phraseDistractors(p, 'plain', 3, mode === 'p_reply'), 'plain');
     } else if (mode === 'p_order') {
-      var tokens = p.plain.split(' ');
+      var pieces = orderPieces(p);
+      var tokens = pieces.units.concat(pieces.extra);
       var order = tokens.map(function (t, i) { return i; });
-      if (tokens.length > 1) {
-        do { order = shuffle(order); } while (order.every(function (v, i) { return v === i; }));
-      }
+      do { order = shuffle(order); } while (order.slice(0, pieces.units.length).every(function (v, i) { return v === i; }));
       q.tokens = tokens;
+      q.unitCount = pieces.units.length;
       q.order = order;      // 打亂後的順序（存 tokens 的索引）
       q.picked = [];        // 使用者依序點選的 order 位置
+      q.answer = p.plain;
+    } else if (mode === 'p_type') {
       q.answer = p.plain;
     }
     return q;
@@ -384,7 +457,7 @@
     if (isPhrase(id)) {
       if (lv <= 1) modes = ['p_listen', 'p_zh2en', 'p_reply'];
       else if (lv === 2) modes = ['p_order', 'p_reply', 'p_listen'];
-      else modes = ['p_order', 'p_reply', 'p_listen', 'p_zh2en'];
+      else modes = ['p_type', 'p_type', 'p_order', 'p_reply', 'p_listen'];
       return pickRandom(modes);
     }
     if (lv <= 1) modes = ['en2zh', 'card', 'zh2en', 'listen'];
@@ -843,6 +916,7 @@
     session.q = null;
     session.picked = null;
     session.showText = false;
+    session.typed = null;
     session.revealed = false;
     if (session.idx >= session.items.length) {
       if (session.tag === 'words') bump('wordsDone');
@@ -1422,7 +1496,7 @@
       if (item.mode === 'resp' && !session.revealed) speakQueue(respSpeechList(w, session.q));
     }
 
-    var input = document.getElementById('spell-input');
+    var input = document.getElementById('spell-input') || document.getElementById('type-input');
     if (input && !session.revealed) input.focus();
     var next = document.querySelector('[data-action="next"]');
     if (next && session.revealed) next.focus();
@@ -1589,14 +1663,35 @@
           var used = q.picked.indexOf(pos) >= 0;
           return '<button class="token' + (used ? ' used' : '') + '" data-pick="' + pos + '"' + (used ? ' disabled' : '') + '>' + esc(q.tokens[ti]) + '</button>';
         }).join('');
-        var done = q.picked.length === q.order.length;
-        h += '<p class="hint center">依序點選單字，排出正確的句子</p>' +
+        var done = q.picked.length > 0;
+        var spare = q.tokens.length - q.unitCount;
+        h += '<p class="hint center">依序點選，排出正確的句子' + (spare ? '（有 ' + spare + ' 個用不到）' : '') + '</p>' +
           '<div class="order-built">' + (built || '<span class="order-empty">點下面的單字放到這裡</span>') + '</div>' +
           '<div class="order-pool">' + pool + '</div>' +
           '<div class="btn-row"><button class="btn" data-action="order-reset">重來</button>' +
           '<button class="btn primary" data-action="order-check"' + (done ? '' : ' disabled') + '>確定</button></div>';
       } else {
         h += '<p class="your-answer">你的答案：<b>' + esc(session.orderInput) + '</b></p>' + feedback(p);
+      }
+      return h;
+    } else if (item.mode === 'p_type') {
+      h += '<div class="prompt"><h2 class="prompt-zh">' + esc(p.zh) + '</h2></div>';
+      if (!revealed) {
+        h += '<p class="hint center">用英文打出整句（大小寫和標點不用管）</p>' +
+          '<form class="type-form" data-form="ptype"><textarea id="type-input" rows="3" lang="en" inputmode="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="輸入英文句子"></textarea>' +
+          '<button class="btn primary block" type="submit">確定</button></form>' +
+          '<p class="spell-warn" role="alert" hidden>看起來輸入了注音或中文，請切換成英文鍵盤再輸入一次（這次不算答錯）</p>' +
+          '<button class="btn link" data-action="give-up">不知道，看答案</button>';
+      } else {
+        var g = session.typed;
+        h += '<p class="your-answer">你的答案：<b>' + esc(g ? g.input : '（未作答）') + '</b></p>';
+        if (g && g.input) {
+          h += '<p class="typed-diff">' + g.tokens.map(function (t) { return '<span class="' + t.st + '">' + esc(t.text) + '</span>'; }).join(' ') + '</p>' +
+            '<p class="hint center">' + (g.missing ? '<span class="miss">波浪線</span>：沒打到或打錯的字　' : '') +
+            (g.typos ? '<span class="typo">虛線</span>：小錯字，注意拼法　' : '') +
+            (g.extra ? '多打了 ' + g.extra + ' 個字' : '') + '</p>';
+        }
+        h += feedback(p);
       }
       return h;
     }
@@ -1636,7 +1731,7 @@
   function feedback(w) {
     var r = session.lastResult;
     var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
-      : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ 明天再複習</div>'
+      : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ ' + (currentItem().mode === 'p_type' ? '差一點！' : '') + (session.schedule ? '明天再複習' : '再多練習幾次') + '</div>'
         : '<div class="fb-head ng">✗ 答錯了，稍後會再考一次</div>';
     var drill = isDrill(w.id);
     if (session.kind === 'free' && r === 'wrong') {
@@ -1662,6 +1757,12 @@
     "we'll": 'we will', "i'd": 'i would', "you're": 'you are', "we're": 'we are', "they're": 'they are',
     "i've": 'i have', "we've": 'we have', "haven't": 'have not', "couldn't": 'could not',
   };
+  // 打字時常省略撇號（dont、im），也當作縮寫；its、well、were 這種本身就是單字的不算
+  var NO_APOSTROPHE = {};
+  Object.keys(CONTRACTIONS).forEach(function (k) {
+    var bare = k.replace(/'/g, '');
+    if (bare !== k && ['its', 'lets', 'wont', 'ill', 'well', 'id', 'were', 'cant', 'wed', 'hell', 'shell'].indexOf(bare) < 0) NO_APOSTROPHE[bare] = CONTRACTIONS[k];
+  });
   var NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
     'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
 
@@ -1669,6 +1770,7 @@
     var t = tok.normalize('NFKC').toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
     if (!t) return [];
     if (CONTRACTIONS[t]) return CONTRACTIONS[t].split(' ');
+    if (NO_APOSTROPHE[t]) return NO_APOSTROPHE[t].split(' ');
     if (/^\d+$/.test(t) && +t <= 20) return [NUMBER_WORDS[+t]];
     return [t];
   }
@@ -1701,6 +1803,73 @@
         return { text: t.text, ok: flat.filter(function (f) { return f.i === i; }).every(function (f) { return f.ok; }) };
       }),
     };
+  }
+
+  // 打出整句的比對：大小寫、標點、縮寫不影響；5 個字母以上的字差一個字母算小錯字（提醒但不算錯）
+  function editDistance1(a, b) {
+    if (a === b) return true;
+    if (Math.abs(a.length - b.length) > 1) return false;
+    var i = 0, j = 0, diff = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++diff > 1) return false;
+      if (a.length > b.length) i++;
+      else if (b.length > a.length) j++;
+      else { i++; j++; }
+    }
+    return diff + (a.length - i) + (b.length - j) <= 1;
+  }
+
+  function compareTyped(target, typed) {
+    var tokens = target.split(/\s+/).map(function (text) { return { text: text, pieces: speechPieces(text) }; });
+    var flat = [];
+    tokens.forEach(function (t, i) { t.pieces.forEach(function (pc) { flat.push({ p: pc, i: i, st: 'miss' }); }); });
+    var spoken = [];
+    typed.split(/\s+/).forEach(function (w) { spoken = spoken.concat(speechPieces(w)); });
+    var near = function (a, b) { return a === b || (a.length >= 5 && editDistance1(a, b)); };
+    var n = flat.length, m = spoken.length, dp = [], a, b;
+    for (a = 0; a <= n; a++) dp.push(new Array(m + 1).fill(0));
+    for (a = n - 1; a >= 0; a--) {
+      for (b = m - 1; b >= 0; b--) {
+        dp[a][b] = near(flat[a].p, spoken[b]) ? dp[a + 1][b + 1] + 1 : Math.max(dp[a + 1][b], dp[a][b + 1]);
+      }
+    }
+    var usedTyped = 0;
+    a = 0; b = 0;
+    while (a < n && b < m) {
+      if (near(flat[a].p, spoken[b])) { flat[a].st = flat[a].p === spoken[b] ? 'ok' : 'typo'; usedTyped++; a++; b++; }
+      else if (dp[a + 1][b] >= dp[a][b + 1]) a++;
+      else b++;
+    }
+    var missing = flat.filter(function (f) { return f.st === 'miss'; }).length;
+    var extra = m - usedTyped;
+    var typos = flat.filter(function (f) { return f.st === 'typo'; }).length;
+    var rank = function (st) { return { miss: 2, typo: 1, ok: 0 }[st]; };
+    return {
+      missing: missing, extra: extra, typos: typos,
+      result: missing + extra === 0 ? 'correct' : missing + extra <= 2 ? 'fuzzy' : 'wrong',
+      tokens: tokens.map(function (t, i) {
+        var st = 'ok';
+        flat.forEach(function (f) { if (f.i === i && rank(f.st) > rank(st)) st = f.st; });
+        return { text: t.text, st: st };
+      }),
+    };
+  }
+
+  // 句型裡的替換說法也算對（例如 I'm here on a student visa.）
+  function phraseVariants(p) {
+    return [p.plain].concat(p.swaps.map(function (sw) { return exPlain(p.en.replace(/\[(.+?)\]/, '[' + sw + ']')); }));
+  }
+
+  function gradeTyped(p, typed) {
+    var best = null;
+    phraseVariants(p).forEach(function (v) {
+      var r = compareTyped(v, typed);
+      r.target = v;
+      var cost = r.missing + r.extra + r.typos / 10;
+      if (!best || cost < best.cost) { best = r; best.cost = cost; }
+    });
+    return best;
   }
 
   function startShadow() {
@@ -1845,6 +2014,7 @@
     if (session.picked) lines.push('我選的：' + session.picked);
     if (item.mode === 'spell') lines.push('我的拼字：' + (session.spellInput || '（未作答）'));
     if (item.mode === 'p_order') lines.push('我的排列：' + session.orderInput);
+    if (item.mode === 'p_type') lines.push('我打的：' + (session.typed ? session.typed.input : '（未作答）'));
     lines.push('正確答案：' + ((q && q.answer) || speechText(item.id)));
     return lines.join('\n');
   }
@@ -2080,7 +2250,7 @@
       case 'next': nextItem(); break;
       case 'exit': exitSession(); break;
       case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
-      case 'give-up': session.spellInput = ''; answer('wrong'); break;
+      case 'give-up': session.spellInput = ''; session.typed = null; answer('wrong'); break;
       case 'export': exportData(); break;
       case 'report': openReport('題目有問題', reportText(), '題目資訊'); break;
       case 'copy-errors': openReport('App 出錯', errorReportText(), '錯誤紀錄'); break;
@@ -2100,6 +2270,21 @@
   });
 
   document.addEventListener('submit', function (e) {
+    if (e.target.dataset.form === 'ptype') {
+      e.preventDefault();
+      var box = document.getElementById('type-input');
+      if (!box.value.trim()) return;
+      if (looksNonEnglish(box.value)) {
+        document.querySelector('.spell-warn').hidden = false;
+        box.select();
+        return;
+      }
+      var g = gradeTyped(PHRASE_BY_ID[currentItem().id], box.value);
+      g.input = box.value.trim();
+      session.typed = g;
+      answer(g.result);
+      return;
+    }
     if (e.target.dataset.form !== 'spell') return;
     e.preventDefault();
     var input = document.getElementById('spell-input');
@@ -2133,6 +2318,14 @@
     if (e.key === 'Escape') { dismissSheet(); return; }
     if (document.querySelector('.sheet-backdrop')) return;
     if (!session || e.key !== 'Enter') return;
+    if (document.activeElement && document.activeElement.id === 'type-input') {
+      // 打整句時按 Enter 直接送出，不換行（選字中的 Enter 不算）
+      if (!e.isComposing) {
+        e.preventDefault();
+        document.querySelector('[data-form="ptype"] button[type="submit"]').click();
+      }
+      return;
+    }
     if (document.activeElement && document.activeElement.id === 'spell-input') return;
     var next = document.querySelector('[data-action="next"]');
     if (next) { e.preventDefault(); next.click(); }
@@ -2175,7 +2368,7 @@
 
   // ---------- 啟動 ----------
   // 給自動測試使用的內部函式
-  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp };
+  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces };
   checkCountry();
   render();
 
