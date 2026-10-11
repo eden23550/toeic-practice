@@ -9,6 +9,7 @@
   var SCENES = window.PHRASE_SCENES;
   var PHRASE_BY_ID = {};
   PHRASES.forEach(function (p) { PHRASE_BY_ID[p.id] = p; });
+  var JOURNEY = window.JOURNEY;
 
   // 句型的 id 以 p: 開頭，學習紀錄和單字存在同一個地方，共用複習排程
   function isPhrase(id) { return id.indexOf('p:') === 0; }
@@ -40,7 +41,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.4.1';
+  var APP_VERSION = '0.5.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -117,6 +118,7 @@
       settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto' },
       words: {},
       daily: {},
+      game: defaultGame(),
     };
   }
 
@@ -129,6 +131,7 @@
       s.settings = Object.assign(d.settings, s.settings || {});
       s.words = s.words || {};
       s.daily = s.daily || {};
+      s.game = Object.assign(defaultGame(), s.game || {});
       return s;
     } catch (e) {
       return defaultState();
@@ -164,6 +167,8 @@
     var day = dayRec();
     if (isPhrase(id)) day.newPhrases = (day.newPhrases || 0) + 1;
     else day.newCount++;
+    gainXp(XP.learn);
+    bump(isPhrase(id) ? 'newPhrase' : 'newWord');
   }
 
   function introduce(id) {
@@ -426,15 +431,296 @@
       .map(function (w) { return w.id; });
   }
 
+  // ---------- 打工度假之旅（獎勵制度） ----------
+  // 答題得經驗值（XP）：升等級，也讓旅程往下一站前進。每日任務和寶箱得里程，里程可以換免死金牌。
+  var XP = { correct: 10, wrong: 3, learn: 5, shadow: 15, mission: 50 };
+  var MILES = { mission: 5, chest: 10, chestMin: 5, chestMax: 20, level: 20 };
+  var FREEZE_PRICE = 50;
+  var FREEZE_MAX = 2;
+  var TITLES = [[1, '新手背包客'], [5, '小有經驗的旅人'], [10, '熟練旅人'], [15, '打工度假達人'], [20, '國際旅人'], [30, '環球旅行家'], [50, '世界公民']];
+
+  function defaultGame() {
+    return {
+      xp: 0, countryXp: 0, country: JOURNEY[0].id, miles: 0, freezes: 0, combo: 0,
+      postcards: [JOURNEY[0].stops[0].id], passport: [], frozen: [], freezeChecked: null,
+      missions: null, notices: [{ type: 'welcome' }],
+    };
+  }
+
+  // 升到下一級需要的經驗值：Lv1→2 要 300，之後每級多 100
+  function xpToNext(lv) { return 200 + 100 * lv; }
+  function levelInfo(xp) {
+    var lv = 1, rest = xp;
+    while (rest >= xpToNext(lv)) { rest -= xpToNext(lv); lv++; }
+    return { level: lv, into: rest, need: xpToNext(lv) };
+  }
+  function titleOf(lv) {
+    var t = TITLES[0][1];
+    TITLES.forEach(function (x) { if (lv >= x[0]) t = x[1]; });
+    return t;
+  }
+
+  // 從第 i 站走到第 i+1 站需要的經驗值，越後面越遠
+  function legXp(i) { return 600 + 300 * i; }
+  function countryById(id) { return JOURNEY.filter(function (c) { return c.id === id; })[0] || JOURNEY[0]; }
+  function stopById(id) {
+    var found = null;
+    JOURNEY.forEach(function (c) { c.stops.forEach(function (st) { if (st.id === id) found = { country: c, stop: st }; }); });
+    return found;
+  }
+  function journeyInfo() {
+    var c = countryById(state.game.country);
+    var last = c.stops.length - 1;
+    var i = 0, rest = state.game.countryXp;
+    while (i < last && rest >= legXp(i)) { rest -= legXp(i); i++; }
+    var nextCountry = JOURNEY[JOURNEY.indexOf(c) + 1] || null;
+    return { country: c, idx: i, done: i >= last, into: rest, need: i < last ? legXp(i) : 0, nextCountry: nextCountry };
+  }
+
+  function notify(n) { state.game.notices.push(n); }
+
+  // 走完一個國家：蓋護照章，有下一個國家就從它的第一站重新出發
+  function finishCountry(c) {
+    var g = state.game;
+    if (g.passport.indexOf(c.id) < 0) {
+      g.passport.push(c.id);
+      notify({ type: 'country', country: c.id });
+    }
+    var next = JOURNEY[JOURNEY.indexOf(c) + 1];
+    if (next) {
+      g.country = next.id;
+      g.countryXp = 0;
+      if (g.postcards.indexOf(next.stops[0].id) < 0) g.postcards.push(next.stops[0].id);
+    }
+  }
+
+  function gainXp(n) {
+    if (!n) return 0;
+    var g = state.game;
+    if (session) session.xp += n;
+    var before = levelInfo(g.xp).level;
+    var j = journeyInfo();
+    g.xp += n;
+    if (!j.done) {
+      g.countryXp += n;
+      var after = journeyInfo();
+      for (var i = j.idx + 1; i <= after.idx; i++) {
+        var st = j.country.stops[i];
+        if (g.postcards.indexOf(st.id) < 0) g.postcards.push(st.id);
+        notify({ type: 'arrive', stop: st.id });
+      }
+      if (after.done) finishCountry(j.country);
+    }
+    var lv = levelInfo(g.xp).level;
+    if (lv > before) {
+      g.miles += MILES.level * (lv - before);
+      notify({ type: 'level', level: lv });
+    }
+    save();
+    return n;
+  }
+
+  // 已經走完的國家後來有了下一站（App 更新加了新國家），就接著出發
+  function checkCountry() {
+    var c = countryById(state.game.country);
+    if (state.game.passport.indexOf(c.id) >= 0 && JOURNEY[JOURNEY.indexOf(c) + 1]) finishCountry(c);
+  }
+
+  // ---------- 每日任務 ----------
+  // 每天從單字、句型與口說、挑戰三類各抽一個；avail 判斷今天做不做得到
+  var MISSIONS = {
+    w_learn: { cat: 'word', ev: 'newWord', target: 5, text: '學 5 個新單字', avail: function () { return unseenWords().length + pendingNewWords().length >= 5; } },
+    w_correct: { cat: 'word', ev: 'wordCorrect', target: 20, text: '單字答對 20 題' },
+    w_review: { cat: 'word', ev: 'wordsDone', target: 1, text: '完成一輪今日單字學習', avail: function () { return dueWords().length + pendingNewWords().length + Math.min(newQuota(), unseenWords().length) > 0; } },
+    p_learn: { cat: 'phrase', ev: 'newPhrase', target: 3, text: '學 3 句新句型', avail: function () { return unseenPhrases().length + pendingNewPhrases().length >= 3; } },
+    p_correct: { cat: 'phrase', ev: 'phraseCorrect', target: 10, text: '句型答對 10 題' },
+    s_shadow: { cat: 'phrase', ev: 'shadowPass', target: 3, text: '口說跟讀 3 句達到 80 分', avail: function () { return !!Recognition; } },
+    d_drill: { cat: 'challenge', ev: 'drillDone', target: 1, text: '完成一組多益題型（10 題）' },
+    d_combo: { cat: 'challenge', ev: 'combo', target: 10, text: '連續答對 10 題', max: true },
+    d_total: { cat: 'challenge', ev: 'answered', target: 40, text: '今天作答 40 題', max: true },
+    d_mistakes: { cat: 'challenge', ev: 'mistakesDone', target: 1, text: '完成一次生字本練習', avail: function () { return mistakeWords().length >= 3; } },
+  };
+  var MISSION_CATS = ['word', 'phrase', 'challenge'];
+
+  function ensureMissions() {
+    var g = state.game;
+    var t = today();
+    if (g.missions && g.missions.date === t) return g.missions;
+    var list = MISSION_CATS.map(function (cat) {
+      var ids = Object.keys(MISSIONS).filter(function (id) { return MISSIONS[id].cat === cat; });
+      var ok = ids.filter(function (id) { return !MISSIONS[id].avail || MISSIONS[id].avail(); });
+      var id = pickRandom(ok.length ? ok : ids);
+      return { id: id, progress: 0, done: false };
+    });
+    g.missions = { date: t, list: list, chestOpened: false };
+    g.combo = 0;
+    save();
+    return g.missions;
+  }
+
+  // 事件發生時更新任務進度；max 類的任務用「最高值」而不是累加
+  function bump(ev, value) {
+    var m = ensureMissions();
+    var changed = false;
+    m.list.forEach(function (it) {
+      var def = MISSIONS[it.id];
+      if (!def || it.done || def.ev !== ev) return;
+      it.progress = def.max ? Math.max(it.progress, value) : it.progress + (value == null ? 1 : value);
+      changed = true;
+      if (it.progress >= def.target) {
+        it.progress = def.target;
+        it.done = true;
+        state.game.miles += MILES.mission;
+        gainXp(XP.mission);
+        toast('✅ 任務完成：' + def.text + '　+' + XP.mission + ' XP　+' + MILES.mission + ' ✈️');
+        if (m.list.every(function (x) { return x.done; })) toast('🎁 三個任務都完成了！到首頁打開旅行寶箱');
+      }
+    });
+    if (changed) save();
+  }
+
+  function openChest() {
+    var m = ensureMissions();
+    if (m.chestOpened || !m.list.every(function (x) { return x.done; })) return;
+    var n = MILES.chest + MILES.chestMin + Math.floor(Math.random() * (MILES.chestMax - MILES.chestMin + 1));
+    m.chestOpened = true;
+    state.game.miles += n;
+    notify({ type: 'chest', miles: n });
+    save();
+    render();
+  }
+
+  function buyFreeze() {
+    var g = state.game;
+    if (g.miles < FREEZE_PRICE || g.freezes >= FREEZE_MAX) return;
+    g.miles -= FREEZE_PRICE;
+    g.freezes++;
+    save();
+    toast('🛡️ 買到一面免死金牌（持有 ' + g.freezes + ' 面）');
+    render();
+  }
+
+  // ---------- 連續天數與免死金牌 ----------
+  function practiced(d) { return !!(state.daily[d] && state.daily[d].answered); }
+  function isFrozen(d) { return state.game.frozen.indexOf(d) >= 0; }
+
+  // 免死金牌保住的日子不算練習天數，但不會讓連續中斷
   function streak() {
     var n = 0;
     var d = today();
-    if (!(state.daily[d] && state.daily[d].answered)) d = addDays(d, -1);
-    while (state.daily[d] && state.daily[d].answered) {
-      n++;
+    if (!practiced(d)) d = addDays(d, -1);
+    while (practiced(d) || isFrozen(d)) {
+      if (practiced(d)) n++;
       d = addDays(d, -1);
     }
     return n;
+  }
+
+  // 每天第一次打開時檢查：前幾天沒練習、金牌又夠，就自動用掉金牌保住連續天數
+  function checkFreeze() {
+    var g = state.game;
+    var t = today();
+    if (g.freezeChecked === t) return;
+    g.freezeChecked = t;
+    var missed = [];
+    var d = addDays(t, -1);
+    while (!practiced(d) && !isFrozen(d) && missed.length <= FREEZE_MAX) {
+      missed.push(d);
+      d = addDays(d, -1);
+    }
+    var kept = missed.length && missed.length <= g.freezes && (practiced(d) || isFrozen(d));
+    if (kept) {
+      g.freezes -= missed.length;
+      g.frozen = g.frozen.concat(missed).filter(function (x) { return x >= addDays(t, -400); });
+      notify({ type: 'freeze', used: missed.length, streak: streak() });
+    }
+    save();
+  }
+
+  // ---------- 提示 ----------
+  function toast(msg) {
+    var box = document.querySelector('.toasts');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'toasts';
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+    }
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  function postcardHtml(st) {
+    return '<div class="postcard"><div class="pc-icon">' + st.icon + '</div><h3>' + esc(st.name) + '</h3>' +
+      '<p>' + esc(st.text) + '</p>' +
+      '<p class="pc-phrase">' + esc(st.phrase) + ' ' + speakBtn(st.phrase) + '</p>' +
+      '<p class="ex-zh">' + esc(st.phraseZh) + '</p></div>';
+  }
+
+  function noticeHtml(n) {
+    var g = state.game;
+    if (n.type === 'welcome') {
+      var first = JOURNEY[0];
+      return '<div class="notice-emoji">✈️</div><h2>打工度假之旅開始！</h2>' +
+        '<p>從台北出發，目標是' + first.flag + ' ' + first.name + '的 ' + first.stops.length + ' 個地方。</p>' +
+        '<ul class="notice-list"><li>⭐ 答題、學新字、口說跟讀都能得到經驗值，升級並往下一站前進</li>' +
+        '<li>📍 抵達新的一站會拿到一張明信片</li>' +
+        '<li>📋 每天 3 個任務，完成可以得到 ✈️ 里程，全部完成還能開寶箱</li>' +
+        '<li>🛡️ 里程可以換免死金牌，忘記練習時自動保住連續天數</li></ul>';
+    }
+    if (n.type === 'level') {
+      return '<div class="notice-emoji">⬆️</div><h2>升級！Lv ' + n.level + '</h2>' +
+        '<p class="notice-big">' + esc(titleOf(n.level)) + '</p><p>獲得 +' + MILES.level + ' ✈️ 里程</p>';
+    }
+    if (n.type === 'arrive') {
+      var f = stopById(n.stop);
+      if (!f) return null;
+      return '<p class="notice-tag">📍 抵達新的一站，獲得一張明信片</p>' + postcardHtml(f.stop);
+    }
+    if (n.type === 'country') {
+      var c = countryById(n.country);
+      var next = JOURNEY[JOURNEY.indexOf(c) + 1];
+      return '<div class="notice-emoji">🛂</div><h2>完成' + esc(c.name) + '篇！</h2>' +
+        '<p>護照蓋上了 ' + c.flag + ' ' + esc(c.name) + ' 的章。</p>' +
+        '<p>' + (next ? '下一站：' + next.flag + ' ' + esc(next.name) + '，從第一站重新出發！' : '下一個國家準備中，等級、里程和每日任務都會繼續累積。') + '</p>';
+    }
+    if (n.type === 'freeze') {
+      return '<div class="notice-emoji">🛡️</div><h2>免死金牌生效</h2>' +
+        '<p>你有 ' + n.used + ' 天沒有練習，自動用掉 ' + n.used + ' 面免死金牌，連續 ' + n.streak + ' 天保住了！</p>' +
+        '<p class="hint">還有 ' + g.freezes + ' 面金牌。今天也來練習吧！</p>';
+    }
+    if (n.type === 'chest') {
+      return '<div class="notice-emoji">🎁</div><h2>旅行寶箱</h2><p class="notice-big">+' + n.miles + ' ✈️ 里程</p>' +
+        '<p class="hint">明天會有新的任務！</p>';
+    }
+    return null;
+  }
+
+  function openSheet(inner, cls) {
+    closeSheet();
+    var el = document.createElement('div');
+    el.className = 'sheet-backdrop' + (cls ? ' ' + cls : '');
+    el.setAttribute('data-close-sheet', '');
+    el.innerHTML = '<div class="sheet" role="dialog" aria-modal="true">' + inner + '</div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  // 升級、抵達等通知等練習結束、回到一般畫面時才一個一個跳出來
+  function showNotice() {
+    if (session || shadow || document.querySelector('.sheet-backdrop')) return;
+    var g = state.game;
+    while (g.notices.length) {
+      var n = g.notices.shift();
+      save();
+      var html = noticeHtml(n);
+      if (!html) continue;
+      openSheet(html + '<button class="btn primary block" data-close-sheet>好的</button>', 'notice');
+      return;
+    }
   }
 
   // ---------- 練習流程 ----------
@@ -443,6 +729,7 @@
   var libFilter = { cat: 'all', q: '' };
   var currentScene = null;
   var practiceSub = null;   // 練習分頁裡的子頁面：'mistakes' 或 null
+  var homeSub = null;       // 首頁的子頁面：'journey' 或 null
   var shadow = null;        // 口說跟讀的狀態
 
   // 每個 item: { type: 'intro' | 'quiz', id, mode, retry }
@@ -468,7 +755,7 @@
     var fresh = pending.concat(unseenWords().slice(0, Math.max(0, count - pending.length)));
     if (extraNew != null) reviews = [];
     var items = reviews.concat(buildNewItems(fresh));
-    startSession('daily', items, true, extraNew != null ? '加碼學習' : '今日學習');
+    startSession('daily', items, true, extraNew != null ? '加碼學習' : '今日學習', 'words');
   }
 
   function startPhraseDaily(extraNew) {
@@ -499,7 +786,7 @@
       .slice(0, 10)
       .map(function (d) { return d.id; });
     var items = ids.map(function (id) { return { type: 'quiz', id: id, mode: type }; });
-    startSession('free', items, false, DRILL_SETS[type].name);
+    startSession('free', items, false, DRILL_SETS[type].name, 'drill');
   }
 
   function startMistakes() {
@@ -523,12 +810,13 @@
     startSession('free', items, false, '自由練習');
   }
 
-  function startSession(kind, items, schedule, title) {
+  // tag：完成時要算進哪個每日任務（words 今日單字、drill 多益題型）
+  function startSession(kind, items, schedule, title, tag) {
     if (!items.length) return;
     items.forEach(function (it) { if (it.mode) it.mode = resolveMode(it.id, it.mode); });
     session = {
       kind: kind, title: title, items: items, idx: 0, schedule: schedule,
-      answered: {}, correct: 0, wrong: 0, wrongIds: [], q: null, revealed: false,
+      answered: {}, correct: 0, wrong: 0, wrongIds: [], q: null, revealed: false, tag: tag || null, xp: 0,
     };
     renderSession();
   }
@@ -542,6 +830,9 @@
     session.showText = false;
     session.revealed = false;
     if (session.idx >= session.items.length) {
+      if (session.tag === 'words') bump('wordsDone');
+      if (session.tag === 'drill') bump('drillDone');
+      if (session.kind === 'mistakes') bump('mistakesDone');
       renderSummary();
     } else {
       renderSession();
@@ -559,11 +850,22 @@
         if (session.wrongIds.indexOf(item.id) < 0) session.wrongIds.push(item.id);
       }
       record(item.id, result, session.schedule);
-    } else if (result === 'correct') {
-      // 重考答對：只更新今日作答量
-      dayRec().answered++;
-      save();
+      session.lastXp = gainXp(result === 'correct' ? XP.correct : XP.wrong);
+      state.game.combo = result === 'correct' ? state.game.combo + 1 : 0;
+      if (result === 'correct') {
+        bump('combo', state.game.combo);
+        if (isPhrase(item.id)) bump('phraseCorrect');
+        else if (!isDrill(item.id)) bump('wordCorrect');
+      }
+    } else {
+      session.lastXp = 0;
+      if (result === 'correct') {
+        // 重考答對：只更新今日作答量
+        dayRec().answered++;
+        save();
+      }
     }
+    bump('answered', dayRec().answered);
     // 答錯就在本輪稍後再考一次
     if (result !== 'correct' && !item.retry && session.kind !== 'free') {
       var pos = Math.min(session.items.length, session.idx + 4);
@@ -604,10 +906,12 @@
 
   function render() {
     applyTheme();
+    checkFreeze();
+    ensureMissions();
     if (session) { renderSession(); return; }
     if (shadow) { renderShadow(); return; }
     var body = '';
-    if (currentTab === 'home') body = viewHome();
+    if (currentTab === 'home') body = homeSub === 'journey' ? viewJourney() : viewHome();
     else if (currentTab === 'phrases') body = currentScene ? viewScene() : viewPhrases();
     else if (currentTab === 'library') body = viewLibrary();
     else if (currentTab === 'practice') body = practiceSub === 'mistakes' ? viewMistakes() : viewPractice();
@@ -615,6 +919,7 @@
     else if (currentTab === 'settings') body = viewSettings();
     $app.innerHTML = '<main class="page">' + body + '</main>' + navBar();
     if (currentTab === 'library') bindLibrarySearch();
+    showNotice();
   }
 
   function navBar() {
@@ -638,6 +943,7 @@
     var total = due + remainNew;
 
     var h = '<header class="hero"><h1>多益單字練習</h1><p class="sub">為出國溝通打好單字基礎</p></header>';
+    h += journeyCard() + missionsCard();
     h += '<section class="card today">';
     h += '<div class="today-row"><div class="big-num">' + due + '</div><div>個字要複習</div></div>';
     h += '<div class="today-row"><div class="big-num">' + remainNew + '</div><div>個新字</div></div>';
@@ -666,6 +972,91 @@
     h += '<label>題數<select id="free-count"><option>10</option><option>20</option><option>30</option></select></label>';
     h += '<label>範圍<select id="free-scope"><option value="learned">已學過的字</option><option value="all">所有單字</option></select></label>';
     h += '</div><button class="btn block" data-action="start-free">開始練習</button></section>';
+    return h;
+  }
+
+  // ---------- 旅程與每日任務的畫面 ----------
+  function journeyCard() {
+    var g = state.game;
+    var lv = levelInfo(g.xp);
+    var j = journeyInfo();
+    var here = j.country.stops[j.idx];
+    var h = '<button class="journey-card" data-action="open-journey">' +
+      '<span class="jc-top"><span class="jc-lv">Lv ' + lv.level + '</span><span class="jc-title">' + esc(titleOf(lv.level)) + '</span>' +
+      '<span class="jc-wallet"><span class="jc-miles">✈️ ' + g.miles + '</span><span class="jc-freeze">🛡️ ' + g.freezes + '</span></span></span>';
+    if (j.done) {
+      h += '<span class="jc-route">' + j.country.flag + ' ' + esc(j.country.name) + '篇完成！' +
+        (j.nextCountry ? '' : '下一個國家準備中') + '</span>';
+    } else {
+      var next = j.country.stops[j.idx + 1];
+      h += '<span class="jc-route">' + j.country.flag + ' 📍 ' + esc(here.name) + ' → ' + next.icon + ' ' + esc(next.name) + '</span>' +
+        '<span class="progress"><span style="width:' + pct(j.into, j.need) + '%"></span></span>' +
+        '<span class="jc-hint">再 ' + (j.need - j.into) + ' XP 抵達' + esc(next.name) + ' · 點這裡看旅程地圖</span>';
+    }
+    return h + '</button>';
+  }
+
+  function missionsCard() {
+    var m = ensureMissions();
+    var doneCount = m.list.filter(function (x) { return x.done; }).length;
+    var h = '<section class="card missions"><div class="missions-head"><h2>📋 今日任務</h2>' +
+      '<span class="missions-count">' + doneCount + ' / ' + m.list.length + '</span></div><ul class="mission-list">';
+    m.list.forEach(function (it) {
+      var def = MISSIONS[it.id];
+      h += '<li class="mission' + (it.done ? ' done' : '') + '" data-mission="' + it.id + '">' +
+        '<span class="mission-check">' + (it.done ? '✅' : '⬜') + '</span>' +
+        '<span class="mission-main"><span class="mission-text">' + esc(def.text) + '</span>' +
+        '<span class="progress"><span style="width:' + pct(it.progress, def.target) + '%"></span></span></span>' +
+        '<span class="mission-num">' + Math.min(it.progress, def.target) + '/' + def.target + '</span></li>';
+    });
+    h += '</ul><p class="hint">每完成一個 +' + XP.mission + ' XP、+' + MILES.mission + ' ✈️ 里程</p>';
+    if (m.chestOpened) h += '<p class="done-msg">🎉 今天的寶箱已經打開了，明天見！</p>';
+    else if (doneCount === m.list.length) h += '<button class="btn primary block chest-btn" data-action="open-chest">🎁 打開旅行寶箱</button>';
+    else h += '<p class="chest-locked">🎁 三個任務都完成可以打開旅行寶箱</p>';
+    return h + '</section>';
+  }
+
+  function viewJourney() {
+    var g = state.game;
+    var lv = levelInfo(g.xp);
+    var j = journeyInfo();
+    var h = '<header class="page-head"><button class="btn link back" data-action="journey-back">‹ 今日</button><h1>打工度假之旅</h1></header>';
+    h += '<section class="card"><div class="lv-row"><span class="jc-lv">Lv ' + lv.level + '</span><b>' + esc(titleOf(lv.level)) + '</b>' +
+      '<span class="cs-num">總經驗值 ' + g.xp + ' XP</span></div>' +
+      '<div class="progress"><div style="width:' + pct(lv.into, lv.need) + '%"></div></div>' +
+      '<p class="hint">再 ' + (lv.need - lv.into) + ' XP 升到 Lv ' + (lv.level + 1) + '</p>' +
+      '<p class="hint">⭐ 答對 +' + XP.correct + '、答錯 +' + XP.wrong + '、學新字或新句型 +' + XP.learn + '、口說跟讀 80 分以上 +' + XP.shadow + '、完成每日任務 +' + XP.mission + '</p></section>';
+
+    h += '<h2 class="section-title">' + j.country.flag + ' ' + esc(j.country.title) + '</h2><ol class="route">';
+    j.country.stops.forEach(function (st, i) {
+      var reached = i <= j.idx;
+      var cls = i === j.idx ? 'here' : reached ? 'reached' : i === j.idx + 1 ? 'next' : 'locked';
+      h += '<li class="stop ' + cls + '">' +
+        (reached ? '<button class="stop-btn" data-postcard="' + st.id + '">' : '<div class="stop-btn">') +
+        '<span class="stop-icon">' + (reached || i === j.idx + 1 ? st.icon : '🔒') + '</span>' +
+        '<span class="stop-main"><span class="stop-name">' + (reached || i === j.idx + 1 ? esc(st.name) : '？？？') + '</span>';
+      if (i === j.idx && !j.done) h += '<span class="stop-sub">📍 你在這裡</span>';
+      else if (i === j.idx + 1) {
+        h += '<span class="progress"><span style="width:' + pct(j.into, j.need) + '%"></span></span>' +
+          '<span class="stop-sub">再 ' + (j.need - j.into) + ' XP</span>';
+      } else if (reached) h += '<span class="stop-sub">📮 看明信片</span>';
+      h += '</span>' + (reached ? '</button>' : '</div>') + '</li>';
+    });
+    h += '</ol>';
+    if (j.done && !j.nextCountry) h += '<p class="note">🌏 下一個國家準備中！等級、里程和每日任務會繼續累積。</p>';
+
+    h += '<section class="card"><h2>🛂 護照</h2><div class="stamps">';
+    JOURNEY.forEach(function (c) {
+      var got = g.passport.indexOf(c.id) >= 0;
+      h += '<span class="stamp' + (got ? ' got' : '') + '">' + (got ? c.flag : '❔') + '<small>' + (got ? esc(c.name) : '未完成') + '</small></span>';
+    });
+    h += '</div><p class="hint">走完一個國家的所有地方，護照就會蓋上那個國家的章。</p></section>';
+
+    h += '<section class="card"><h2>🛍️ 里程商店</h2><p class="row">你的里程<b>✈️ ' + g.miles + '</b></p>' +
+      '<div class="shop-item"><span class="shop-icon">🛡️</span><span class="shop-main"><b>免死金牌</b>' +
+      '<span class="hint">忘記練習的隔天打開 App 時自動使用，一面保住一天的連續天數。最多持有 ' + FREEZE_MAX + ' 面（目前 ' + g.freezes + ' 面）。</span></span>' +
+      '<button class="btn small" data-action="buy-freeze"' + (g.miles < FREEZE_PRICE || g.freezes >= FREEZE_MAX ? ' disabled' : '') + '>' + FREEZE_PRICE + ' ✈️</button></div>' +
+      '<p class="hint">里程來源：每日任務 +' + MILES.mission + '、旅行寶箱 ' + (MILES.chest + MILES.chestMin) + '～' + (MILES.chest + MILES.chestMax) + '、每升一級 +' + MILES.level + '</p></section>';
     return h;
   }
 
@@ -1208,6 +1599,7 @@
     if (session.kind === 'free' && r === 'wrong') {
       head = '<div class="fb-head ng">✗ 答錯了' + (drill ? '，看看解析' : w.type === 'phrase' ? '，再看一次這句' : '，已加入生字本') + '</div>';
     }
+    if (session.lastXp) head = head.replace('</div>', '<span class="xp-pill">+' + session.lastXp + ' XP</span></div>');
     var card = drill ? drillCard(w) : w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
     return '<div class="feedback">' + head + card + '</div>' +
       '<button class="btn primary block" data-action="next">下一題</button>' +
@@ -1271,7 +1663,7 @@
   function startShadow() {
     var learned = PHRASES.filter(function (p) { return isLearned(p.id); });
     var pool = learned.length >= 5 ? learned : PHRASES;
-    shadow = { ids: shuffle(pool).slice(0, 10).map(function (p) { return p.id; }), idx: 0, result: null, error: null, listening: false, passed: 0 };
+    shadow = { ids: shuffle(pool).slice(0, 10).map(function (p) { return p.id; }), idx: 0, result: null, error: null, listening: false, passed: 0, awarded: {} };
     renderShadow();
     window.scrollTo(0, 0);
   }
@@ -1323,7 +1715,14 @@
       var day = dayRec();
       day.answered++;
       save();
-      if (best.score >= SHADOW_PASS) shadow.passed++;
+      bump('answered', day.answered);
+      // 同一句唸過 80 分只算一次經驗值
+      if (best.score >= SHADOW_PASS && !shadow.awarded[shadow.idx]) {
+        shadow.awarded[shadow.idx] = true;
+        shadow.passed++;
+        gainXp(XP.shadow);
+        bump('shadowPass');
+      }
     };
     rec.onerror = function (e) {
       shadow.error = e.error === 'not-allowed' || e.error === 'service-not-allowed'
@@ -1484,12 +1883,20 @@
     if (el) el.remove();
   }
 
+  // 關掉通知後，接著顯示下一則（點連結時要等瀏覽器先處理完點擊）
+  function dismissSheet() {
+    var wasNotice = document.querySelector('.sheet-backdrop.notice');
+    closeSheet();
+    if (wasNotice) render();
+  }
+
   function renderSummary() {
     var s = session;
     var total = s.correct + s.wrong;
     var h = '<div class="session"><main class="session-body summary">';
     h += '<div class="summary-emoji">' + (total && s.wrong === 0 ? '🏆' : '🎉') + '</div>';
     h += '<h1>' + esc(s.title) + '完成！</h1>';
+    if (s.xp) h += '<p class="xp-earned">⭐ 這一輪獲得 ' + s.xp + ' XP</p>';
     if (total) {
       h += '<section class="tiles">' + tile('✅', s.correct, '答對') + tile('❌', s.wrong, '答錯') +
         tile('🎯', pct(s.correct, total) + '%', '正確率') + tile('🔥', streak() + ' 天', '連續練習') + '</section>';
@@ -1510,7 +1917,7 @@
     var closer = e.target.closest('[data-close-sheet]');
     if (closer && (closer.tagName !== 'DIV' || e.target === closer)) {
       // 點連結時不要擋住預設行為，表單才能正常打開
-      setTimeout(closeSheet);
+      setTimeout(dismissSheet);
       if (closer.tagName !== 'A') return;
     }
     var copyRaw = e.target.closest('[data-copy-raw]');
@@ -1520,6 +1927,8 @@
       });
       return;
     }
+    var sheetSpeak = e.target.closest('.sheet [data-speak]');
+    if (sheetSpeak) { speak(sheetSpeak.dataset.speak); return; }
     if (document.querySelector('.sheet-backdrop')) return;
     var t = e.target.closest('button, [data-tab]');
     if (!t) return;
@@ -1534,8 +1943,14 @@
       currentTab = t.dataset.tab;
       currentScene = null;
       practiceSub = null;
+      homeSub = null;
       render();
       window.scrollTo(0, 0);
+      return;
+    }
+    if (t.dataset.postcard) {
+      var pc = stopById(t.dataset.postcard);
+      if (pc) openSheet(postcardHtml(pc.stop) + '<button class="btn primary block" data-close-sheet>關閉</button>', 'postcard-sheet');
       return;
     }
     if (t.dataset.drill) {
@@ -1594,6 +2009,10 @@
         break;
       }
       case 'start-mistakes': startMistakes(); break;
+      case 'open-journey': homeSub = 'journey'; render(); window.scrollTo(0, 0); break;
+      case 'journey-back': homeSub = null; render(); window.scrollTo(0, 0); break;
+      case 'open-chest': openChest(); break;
+      case 'buy-freeze': buyFreeze(); break;
       case 'open-mistakes': practiceSub = 'mistakes'; render(); window.scrollTo(0, 0); break;
       case 'practice-back': practiceSub = null; render(); window.scrollTo(0, 0); break;
       case 'speak-all': speakQueue(respSpeechList(getItem(currentItem().id), session.q)); break;
@@ -1668,7 +2087,7 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { closeSheet(); return; }
+    if (e.key === 'Escape') { dismissSheet(); return; }
     if (document.querySelector('.sheet-backdrop')) return;
     if (!session || e.key !== 'Enter') return;
     if (document.activeElement && document.activeElement.id === 'spell-input') return;
@@ -1696,7 +2115,11 @@
         if (!data || typeof data.words !== 'object' || typeof data.daily !== 'object') throw new Error('bad');
         if (!confirm('匯入會覆蓋目前的紀錄，確定嗎？')) return;
         var d = defaultState();
-        state = { settings: Object.assign(d.settings, data.settings || {}), words: data.words, daily: data.daily };
+        state = {
+          settings: Object.assign(d.settings, data.settings || {}), words: data.words, daily: data.daily,
+          game: Object.assign(defaultGame(), data.game || {}),
+        };
+        checkCountry();
         save();
         alert('匯入成功！');
         render();
@@ -1709,7 +2132,8 @@
 
   // ---------- 啟動 ----------
   // 給自動測試使用的內部函式
-  window.TOEIC_APP = { scoreSpeech: scoreSpeech };
+  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp };
+  checkCountry();
   render();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

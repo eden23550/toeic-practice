@@ -517,3 +517,134 @@ a.btn { color: inherit; }
 }
 .mic-btn.on { background: var(--ng); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.7; } }
+
+/* 打工度假之旅 */
+.progress > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+.journey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #0f766e, #2563eb);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.journey-card .progress { display: block; background: rgba(255, 255, 255, 0.3); }
+.journey-card .progress > span { background: #fff; }
+.jc-top { display: flex; align-items: center; gap: 8px; }
+.jc-lv { font-weight: 800; font-size: 0.85rem; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.18); white-space: nowrap; }
+.jc-title { font-weight: 700; flex: 1; min-width: 0; }
+.jc-wallet { display: flex; gap: 10px; font-weight: 700; white-space: nowrap; }
+.jc-route { font-size: 1.05rem; font-weight: 700; }
+.jc-hint { font-size: 0.8rem; opacity: 0.9; }
+.lv-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lv-row .jc-lv { background: var(--accent); color: var(--accent-text); }
+.lv-row .cs-num { margin-left: auto; }
+.card .progress + .hint { margin-top: 8px; }
+
+/* 每日任務 */
+.missions { border: 2px solid var(--st-learning); }
+.missions-head { display: flex; align-items: center; justify-content: space-between; }
+.missions-head h2 { margin: 0; }
+.missions-count { font-weight: 800; color: var(--st-learning); }
+.mission-list { list-style: none; padding: 0; margin: 12px 0 8px; display: grid; gap: 10px; }
+.mission { display: flex; align-items: center; gap: 10px; }
+.mission-main { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mission-main .progress { display: block; }
+.mission-main .progress > span { background: var(--st-learning); }
+.mission.done .mission-text { color: var(--muted); text-decoration: line-through; }
+.mission.done .progress > span { background: var(--ok); }
+.mission-num { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.chest-locked { text-align: center; color: var(--muted); font-size: 0.9rem; margin: 4px 0 0; }
+.chest-btn { animation: pulse 1.4s ease-in-out infinite; }
+
+/* 旅程地圖 */
+.route { list-style: none; padding: 0; margin: 0 0 16px; position: relative; }
+.route::before { content: ""; position: absolute; left: 27px; top: 20px; bottom: 20px; border-left: 3px dashed var(--border); }
+.stop { position: relative; margin-bottom: 8px; }
+.stop-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+button.stop-btn { cursor: pointer; }
+.stop-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 1.1rem;
+}
+.stop.reached .stop-icon { background: var(--ok-soft); }
+.stop.here .stop-btn { border: 2px solid var(--accent); }
+.stop.here .stop-icon { background: var(--accent-soft); }
+.stop.locked .stop-btn { opacity: 0.55; }
+.stop-main { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stop-main .progress { display: block; }
+.stop-name { font-weight: 700; }
+.stop-sub { font-size: 0.8rem; color: var(--muted); }
+
+.stamps { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.stamp {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  border: 2px dashed var(--border);
+  font-size: 1.8rem;
+  color: var(--muted);
+}
+.stamp.got { border: 3px solid var(--ng); color: var(--ng); transform: rotate(-8deg); }
+.stamp small { font-size: 0.7rem; font-weight: 700; }
+.shop-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.shop-icon { font-size: 1.8rem; }
+.shop-main { flex: 1; display: flex; flex-direction: column; }
+.shop-main .hint { margin: 2px 0 0; }
+
+/* 明信片與通知 */
+.postcard { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--surface-2); margin-bottom: 12px; }
+.postcard h3 { margin: 4px 0 8px; font-size: 1.3rem; }
+.pc-icon { font-size: 2.4rem; }
+.pc-phrase { font-weight: 700; margin-bottom: 0; }
+.notice .sheet { text-align: center; }
+.notice .postcard { text-align: left; }
+.notice-emoji { font-size: 3rem; }
+.notice-big { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+.notice-tag { font-weight: 700; color: var(--accent); }
+.notice-list { text-align: left; padding-left: 20px; line-height: 1.6; }
+
+.xp-pill { float: right; font-size: 0.85rem; padding: 2px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-text); }
+.xp-earned { font-weight: 700; color: var(--accent); margin-top: -8px; }
+.toasts {
+  position: fixed;
+  left: 0; right: 0;
+  top: calc(12px + env(safe-area-inset-top));
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  z-index: 50;
+  pointer-events: none;
+}
+.toast {
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: toast-in 0.25s ease-out;
+}
+@keyframes toast-in { from { transform: translateY(-12px); opacity: 0; } }

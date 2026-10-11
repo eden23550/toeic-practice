@@ -73,6 +73,25 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
 
   const text = async (sel) => (await page.textContent(sel)).replace(/\s+/g, ' ').trim();
 
+  // 升級、抵達新的一站等通知會蓋住畫面：記下內容後關掉，再繼續原本的點擊
+  const notices = [];
+  async function closeNotices() {
+    for (let i = 0; i < 20; i++) {
+      const el = await page.$('.sheet-backdrop.notice');
+      if (!el) return;
+      notices.push((await el.textContent()).replace(/\s+/g, ' ').trim());
+      await page.click('.notice .sheet button[data-close-sheet]', { noNoticeCheck: true });
+      await el.waitForElementState('hidden').catch(() => {});
+      await page.waitForTimeout(20);
+    }
+  }
+  const rawClick = page.click.bind(page);
+  page.click = async (sel, opts = {}) => {
+    if (!opts.noNoticeCheck) await closeNotices();
+    const { noNoticeCheck, ...rest } = opts;
+    return rawClick(sel, rest);
+  };
+
   // 依題型作答一題；correct=false 時故意答錯
   async function answerCurrent(correct = true) {
     const data = await page.evaluate(() => ({ tag: document.querySelector('.tag').textContent }));
@@ -347,6 +366,139 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       expect((await bg()) === darkBg, '跟隨系統且手機是深色時，背景應該是深色');
       await page.emulateMedia({ colorScheme: 'light' });
       expect((await bg()) === lightBg, '跟隨系統且手機是淺色時，背景應該是淺色');
+    });
+
+    // ---------- 打工度假之旅 ----------
+    const readGame = () => page.evaluate(() => JSON.parse(localStorage.getItem('toeic-practice-v1')).game);
+    const writeState = (fn) => page.evaluate((src) => {
+      const s = JSON.parse(localStorage.getItem('toeic-practice-v1'));
+      new Function('s', src)(s);
+      localStorage.setItem('toeic-practice-v1', JSON.stringify(s));
+    }, fn);
+
+    await step('旅程：第一次打開有說明，練習後得到經驗值、升級並抵達新的一站', async () => {
+      expect(notices.some((n) => n.includes('打工度假之旅開始')), '第一次打開應該出現旅程說明');
+      expect(notices.some((n) => n.includes('升級！')), '練習一陣子後應該出現升級通知');
+      expect(notices.some((n) => n.includes('抵達新的一站')), '練習一陣子後應該抵達新的一站');
+      const g = await readGame();
+      expect(g.xp > 600, '經驗值應該累積，實際是 ' + g.xp);
+      expect(g.postcards.includes('au-airport'), '應該拿到桃園機場的明信片');
+      await page.click('[data-tab="home"]');
+      expect((await text('.journey-card')).includes('Lv '), '首頁應該顯示等級');
+      await page.click('[data-action="open-journey"]');
+      expect((await page.$$('.route .stop')).length === 12, '澳洲應該有 12 站');
+      await page.click('[data-postcard="au-airport"]');
+      expect((await text('.postcard')).includes('桃園機場'), '點已抵達的站應該顯示明信片');
+      await page.click('.sheet button[data-close-sheet]', { noNoticeCheck: true });
+      expect(!(await page.$('[data-postcard="au-goldcoast"]')), '還沒抵達的站不能看明信片');
+      await page.click('[data-action="journey-back"]');
+    });
+
+    await step('每日任務：完成三個任務後可以打開寶箱拿里程', async () => {
+      // 指定今天的任務：生字本以外都可以用前面的流程完成
+      await writeState(`s.game.missions = { date: s.game.missions.date, chestOpened: false, list: [
+        { id: 'w_correct', progress: 18, done: false }, { id: 'p_correct', progress: 0, done: false },
+        { id: 'd_drill', progress: 0, done: false }] }; s.game.miles = 0;`);
+      await page.reload();
+      await page.click('[data-tab="home"]');
+      expect((await text('.missions')).includes('0 / 3'), '應該有 3 個未完成的任務');
+      expect(!(await page.$('[data-action="open-chest"]')), '任務沒完成前不能開寶箱');
+      // 單字答對 2 題 → 完成「單字答對 20 題」
+      await page.selectOption('#free-mode', 'en2zh');
+      await page.selectOption('#free-scope', 'all');
+      await page.click('[data-action="start-free"]');
+      for (let i = 0; i < 2; i++) {
+        const word = (await page.textContent('.prompt-word')).trim();
+        const zh = await page.evaluate((w) => window.TOEIC_WORDS.find((x) => x.word === w).zh, word);
+        await page.click(`.option[data-option="${zh}"]`);
+        expect((await text('.fb-head')).includes('+10 XP'), '答對應該顯示 +10 XP');
+        await page.click('[data-action="next"]');
+      }
+      await page.waitForSelector('.toast:has-text("任務完成")');
+      await page.click('[data-action="exit"]');
+      expect((await text('.missions')).includes('1 / 3'), '應該完成 1 個任務');
+      // 句型答對 10 題、完成一組多益題型
+      await writeState(`s.game.missions.list[1].progress = 9;`);
+      await page.reload();
+      await page.click('[data-tab="phrases"]');
+      await page.click('[data-scene="social"]');
+      await page.click('[data-action="scene-practice"]');
+      for (let i = 0; i < 10 && !(await page.$('.fb-head.ok')); i++) {
+        await answerCurrent();
+        if (!(await page.$('.fb-head.ok'))) await page.click('[data-action="next"]');
+      }
+      await page.click('[data-action="exit"]');
+      await page.click('[data-tab="practice"]');
+      await page.click('[data-drill="col"]');
+      for (let i = 0; i < 10; i++) { await answerCurrent(); await page.click('[data-action="next"]'); }
+      await page.click('[data-action="exit"]');
+      await page.click('[data-tab="home"]');
+      expect((await text('.missions')).includes('3 / 3'), '三個任務都應該完成：' + await text('.missions'));
+      await page.click('[data-action="open-chest"]');
+      await page.waitForSelector('.notice');
+      const chest = await text('.notice');
+      expect(/旅行寶箱\s*\+\d+ ✈️/.test(chest), '寶箱應該給里程：' + chest);
+      await closeNotices();
+      const g = await readGame();
+      const chestMiles = +chest.match(/\+(\d+) ✈️/)[1];
+      expect(chestMiles >= 15 && chestMiles <= 30, '寶箱里程應該在 15～30，實際是 ' + chestMiles);
+      expect(g.miles >= 15 + chestMiles, '三個任務加寶箱至少要有 ' + (15 + chestMiles) + ' 里程，實際是 ' + g.miles);
+      expect(!(await page.$('[data-action="open-chest"]')), '寶箱只能開一次');
+    });
+
+    await step('里程商店：用里程換免死金牌，最多 2 面', async () => {
+      await writeState(`s.game.miles = 120; s.game.freezes = 0;`);
+      await page.reload();
+      await page.click('[data-action="open-journey"]');
+      await page.click('[data-action="buy-freeze"]');
+      await page.click('[data-action="buy-freeze"]');
+      let g = await readGame();
+      expect(g.freezes === 2 && g.miles === 20, `應該有 2 面金牌、剩 20 里程，實際是 ${g.freezes} 面、${g.miles} 里程`);
+      expect(await page.isDisabled('[data-action="buy-freeze"]'), '持有 2 面後不能再買');
+    });
+
+    await step('免死金牌：漏掉一天自動使用，連續天數保住；金牌不夠就中斷', async () => {
+      // 假裝前 3 天到前 2 天都有練習，昨天沒練習
+      const setup = (freezes) => writeState(`
+        const d = (n) => { const x = new Date(); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+        s.daily = {}; s.daily[d(3)] = { newCount: 0, answered: 5, correct: 5, wrong: 0 }; s.daily[d(2)] = { newCount: 0, answered: 5, correct: 5, wrong: 0 };
+        s.game.freezes = ${freezes}; s.game.frozen = []; s.game.freezeChecked = null; s.game.notices = [];`);
+      await setup(1);
+      await page.reload();
+      await page.waitForSelector('.notice');
+      expect((await text('.notice')).includes('免死金牌生效'), '應該自動使用免死金牌');
+      await closeNotices();
+      expect((await text('.tiles')).includes('2 天'), '連續天數應該保住 2 天：' + await text('.tiles'));
+      expect((await readGame()).freezes === 0, '金牌應該用掉');
+      await page.reload();
+      expect(!(await page.$('.notice')), '同一天不應該再用一次');
+      // 漏掉一天但沒有金牌
+      await setup(0);
+      await page.reload();
+      expect(!(await page.$('.notice')), '沒有金牌時不應該出現通知');
+      expect((await text('.tiles')).includes('0 天'), '沒有金牌時連續天數應該中斷');
+    });
+
+    await step('旅程：走完澳洲蓋護照章，顯示下一個國家準備中', async () => {
+      const total = await page.evaluate(() => { let t = 0; for (let i = 0; i < 11; i++) t += window.TOEIC_APP.legXp(i); return t; });
+      await writeState(`s.game.countryXp = ${total - 3};`);
+      await page.reload();
+      await page.click('[data-tab="home"]');
+      await page.selectOption('#free-mode', 'en2zh');
+      await page.selectOption('#free-scope', 'all');
+      await page.click('[data-action="start-free"]');
+      await answerCurrent(); // 答對或答錯都至少 +3，再加上可能的任務經驗值
+      await page.click('[data-action="exit"]');
+      await page.waitForSelector('.notice');
+      await closeNotices();
+      expect(notices.some((n) => n.includes('黃金海岸')), '應該抵達最後一站黃金海岸');
+      expect(notices.some((n) => n.includes('完成澳洲篇') && n.includes('下一個國家準備中')), '應該完成澳洲篇');
+      const g = await readGame();
+      expect(g.passport.includes('au'), '護照應該蓋上澳洲的章');
+      expect((await text('.journey-card')).includes('下一個國家準備中'), '首頁應該顯示下一個國家準備中');
+      await page.click('[data-action="open-journey"]');
+      expect(await page.$('.stamp.got'), '護照頁應該有蓋好的章');
+      await page.click('[data-action="journey-back"]');
     });
 
     await step('其他分頁都能正常顯示', async () => {
