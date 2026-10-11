@@ -648,3 +648,16 @@ button.stop-btn { cursor: pointer; }
   animation: toast-in 0.25s ease-out;
 }
 @keyframes toast-in { from { transform: translateY(-12px); opacity: 0; } }
+
+/* 選項解析 */
+.notes-box { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 8px 12px; }
+.notes-box summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--accent); }
+.option-notes { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.option-notes li { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
+.on-mark { width: 1.2em; flex: none; text-align: center; color: var(--muted); font-weight: 700; }
+.option-notes li.right .on-mark { color: var(--ok); }
+.option-notes li.wrong .on-mark { color: var(--ng); }
+.option-notes li.right b { color: var(--ok); }
+.option-notes li.wrong b { color: var(--ng); }
+.on-main { display: flex; flex-direction: column; min-width: 0; }
+.on-sub { color: var(--muted); font-size: 0.85rem; }

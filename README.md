@@ -61,6 +61,7 @@ npm test            # 資料檢查 + 版本號檢查 + 瀏覽器流程測試
 index.html            頁面入口
 css/style.css         樣式（支援深色模式）
 js/words.js           單字庫
+js/forms.js           詞性填空干擾選項的詞性與中文
 js/phrases.js         出國實用句型
 js/toeic.js           多益題型題庫（搭配詞、Part 5、Part 2）
 js/journey.js         打工度假之旅的國家、各站與明信片
@@ -83,6 +84,6 @@ CLAUDE.md             開發規則（給 AI 助手與開發者）
 ]],
 ```
 
-干擾選項放進每個例句都必須說不通，避免一題出現兩個正確答案。修改後請同時更新 `js/app.js` 的 `APP_VERSION` 和 `sw.js` 的 `CACHE` 版本號，讓已安裝的使用者拿到新版，並執行 `npm test`。
+干擾選項放進每個例句都必須說不通，避免一題出現兩個正確答案。單字庫裡沒有的干擾選項，要在 `js/forms.js` 寫上詞性和中文（作答後會顯示）。修改後請同時更新 `js/app.js` 的 `APP_VERSION` 和 `sw.js` 的 `CACHE` 版本號，讓已安裝的使用者拿到新版，並執行 `npm test`。
 
 練習紀錄存在瀏覽器裡，換手機或清除瀏覽器資料前，請先到「設定」匯出備份。

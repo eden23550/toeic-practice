@@ -4,7 +4,9 @@
   var WORDS = window.TOEIC_WORDS;
   var CATS = window.TOEIC_CATEGORIES;
   var WORD_BY_ID = {};
-  WORDS.forEach(function (w) { WORD_BY_ID[w.id] = w; });
+  var WORD_BY_WORD = {};
+  WORDS.forEach(function (w) { WORD_BY_ID[w.id] = w; WORD_BY_WORD[w.word] = w; });
+  var WORD_FORMS = window.WORD_FORMS || {};
   var PHRASES = window.PHRASES;
   var SCENES = window.PHRASE_SCENES;
   var PHRASE_BY_ID = {};
@@ -41,7 +43,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.5.0';
+  var APP_VERSION = '0.5.1';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -281,7 +283,7 @@
     var others = shuffle(usable.filter(function (w) { return mainPos(w) !== mainPos(word); }));
     var out = [];
     samePos.concat(others).some(function (w) {
-      if (!used[w[field]]) { used[w[field]] = true; out.push(w[field]); }
+      if (!used[w[field]]) { used[w[field]] = true; out.push(w); }
       return out.length >= n;
     });
     return out;
@@ -312,20 +314,35 @@
     used[p[field]] = true;
     var out = [];
     same.concat(other).some(function (x) {
-      if (!used[x[field]]) { used[x[field]] = true; out.push(x[field]); }
+      if (!used[x[field]]) { used[x[field]] = true; out.push(x); }
       return out.length >= n;
     });
     return out;
   }
 
+  // 選擇題的選項和它們的來源（單字或句型），作答後用來顯示每個選項的意思
+  function setOptions(q, answerItem, others, field) {
+    var items = [answerItem].concat(others);
+    q.options = shuffle(items.map(function (x) { return x[field]; }));
+    q.answer = answerItem[field];
+    q.sources = {};
+    items.forEach(function (x) { q.sources[x[field]] = x.id; });
+  }
+
+  // 詞性填空的選項：單字庫裡有的字用單字庫的詞性和中文，其他的查 forms.js
+  function formInfo(word) {
+    var w = WORD_BY_WORD[word];
+    if (w) return { pos: w.pos, zh: w.zh };
+    var f = WORD_FORMS[word];
+    return f ? { pos: f[0], zh: f[1] } : null;
+  }
+
   function makePhraseQuestion(p, mode) {
     var q = { id: p.id, mode: mode };
     if (mode === 'p_listen') {
-      q.options = shuffle([p.zh].concat(phraseDistractors(p, 'zh', 3)));
-      q.answer = p.zh;
+      setOptions(q, p, phraseDistractors(p, 'zh', 3), 'zh');
     } else if (mode === 'p_zh2en' || mode === 'p_reply') {
-      q.options = shuffle([p.plain].concat(phraseDistractors(p, 'plain', 3, mode === 'p_reply')));
-      q.answer = p.plain;
+      setOptions(q, p, phraseDistractors(p, 'plain', 3, mode === 'p_reply'), 'plain');
     } else if (mode === 'p_order') {
       var tokens = p.plain.split(' ');
       var order = tokens.map(function (t, i) { return i; });
@@ -349,11 +366,9 @@
     var w = WORD_BY_ID[id];
     var q = { id: id, mode: mode, exIdx: Math.floor(Math.random() * w.examples.length) };
     if (mode === 'en2zh' || mode === 'listen') {
-      q.options = shuffle([w.zh].concat(distractors(w, 'zh', 3)));
-      q.answer = w.zh;
+      setOptions(q, w, distractors(w, 'zh', 3), 'zh');
     } else if (mode === 'zh2en') {
-      q.options = shuffle([w.word].concat(distractors(w, 'word', 3)));
-      q.answer = w.word;
+      setOptions(q, w, distractors(w, 'word', 3), 'word');
     } else if (mode === 'fill') {
       // 多益 Part 5 風格：選項是同一個字的不同詞性或易混淆字
       q.options = shuffle([w.word].concat(shuffle(w.forms).slice(0, 3)));
@@ -1590,6 +1605,34 @@
     return h;
   }
 
+  // 作答後列出每個選項的意思；答錯時直接展開，答對時收起來
+  function optionNotes(q) {
+    if (!q || !q.options || isDrill(q.id)) return '';
+    var rows = q.options.map(function (opt) {
+      var main, sub;
+      if (q.mode === 'fill') {
+        var f = formInfo(opt);
+        if (!f) return null;
+        main = '<b>' + esc(opt) + '</b> <span class="pos">' + esc(f.pos) + '</span>';
+        sub = esc(f.zh);
+      } else {
+        var src = q.sources && q.sources[opt] ? getItem(q.sources[opt]) : null;
+        if (!src) return null;
+        if (q.mode === 'en2zh' || q.mode === 'listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.word) + ' <span class="pos">' + esc(src.pos) + '</span>'; }
+        else if (q.mode === 'zh2en') { main = '<b>' + esc(opt) + '</b> <span class="pos">' + esc(src.pos) + '</span>'; sub = esc(src.zh); }
+        else if (q.mode === 'p_listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.plain); }
+        else { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.zh); }
+      }
+      var cls = opt === q.answer ? 'right' : opt === session.picked ? 'wrong' : '';
+      return '<li class="' + cls + '"><span class="on-mark">' + (opt === q.answer ? '✓' : opt === session.picked ? '✗' : '·') + '</span>' +
+        '<span class="on-main"><span>' + main + '</span><span class="on-sub">' + sub + '</span></span></li>';
+    });
+    if (rows.some(function (r) { return !r; })) return '';
+    var list = '<ul class="option-notes">' + rows.join('') + '</ul>';
+    var title = q.mode === 'fill' ? '每個選項的詞性和意思' : '每個選項的意思';
+    return '<details class="notes-box"' + (session.lastResult === 'correct' ? '' : ' open') + '><summary>📖 ' + title + '</summary>' + list + '</details>';
+  }
+
   function feedback(w) {
     var r = session.lastResult;
     var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
@@ -1601,7 +1644,7 @@
     }
     if (session.lastXp) head = head.replace('</div>', '<span class="xp-pill">+' + session.lastXp + ' XP</span></div>');
     var card = drill ? drillCard(w) : w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
-    return '<div class="feedback">' + head + card + '</div>' +
+    return '<div class="feedback">' + head + optionNotes(session.q) + card + '</div>' +
       '<button class="btn primary block" data-action="next">下一題</button>' +
       '<button class="btn link report" data-action="report">🚩 這題怪怪的？回報這題</button>';
   }
