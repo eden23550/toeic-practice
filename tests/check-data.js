@@ -8,6 +8,7 @@ global.window = {};
 require(path.join(__dirname, '../js/words.js'));
 require(path.join(__dirname, '../js/phrases.js'));
 require(path.join(__dirname, '../js/toeic.js'));
+require(path.join(__dirname, '../js/journey.js'));
 
 const errors = [];
 const fail = (where, msg) => errors.push(`${where}: ${msg}`);
@@ -109,6 +110,26 @@ drills.forEach((d) => {
   }
 });
 
+// ---------- 打工度假之旅 ----------
+const journey = window.JOURNEY;
+const countryIds = new Set();
+const stopIds = new Set();
+if (!journey || !journey.length) fail('旅程', '至少要有一個國家');
+(journey || []).forEach((c) => {
+  const where = `國家「${c.name}」`;
+  ['id', 'name', 'flag', 'title'].forEach((k) => { if (!c[k]) fail(where, `缺少 ${k}`); });
+  if (countryIds.has(c.id)) fail(where, '重複的國家 id');
+  countryIds.add(c.id);
+  if (!c.stops || c.stops.length < 2) fail(where, '至少要有 2 站');
+  (c.stops || []).forEach((st) => {
+    const w = `${where}的「${st.name}」`;
+    ['id', 'name', 'icon', 'text', 'phrase', 'phraseZh'].forEach((k) => { if (!st[k]) fail(w, `缺少 ${k}`); });
+    if (stopIds.has(st.id)) fail(w, '重複的站 id（明信片紀錄用 id 對應）');
+    stopIds.add(st.id);
+    if (st.id && st.id.indexOf(c.id + '-') !== 0) fail(w, `站的 id 要以「${c.id}-」開頭`);
+  });
+});
+
 // ---------- 結果 ----------
 if (errors.length) {
   console.error(`資料檢查失敗，共 ${errors.length} 個問題：\n`);
@@ -118,4 +139,5 @@ if (errors.length) {
 console.log(`✓ 資料檢查通過：${words.length} 個單字（${words.filter((w) => w.forms.length).length} 個有詞性填空題）、` +
   `${phrases.length} 句句型（${phrases.filter((p) => p.q).length} 句有情境對話題）、` +
   `多益題 ${drills.length} 題（搭配詞 ${drills.filter((d) => d.type === 'col').length}、` +
-  `Part 5 文法 ${drills.filter((d) => d.type === 'gram').length}、Part 2 聽力 ${drills.filter((d) => d.type === 'resp').length}）`);
+  `Part 5 文法 ${drills.filter((d) => d.type === 'gram').length}、Part 2 聽力 ${drills.filter((d) => d.type === 'resp').length}）、` +
+  `旅程 ${journey.length} 個國家 ${stopIds.size} 站`);
