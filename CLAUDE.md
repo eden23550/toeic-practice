@@ -11,7 +11,7 @@
 - `js/toeic.js`：多益題型題庫（搭配詞 `c:`、Part 5 文法 `g:`、Part 2 聽力應答 `l:`），第一個選項是正確答案
 - `js/app.js`：所有 App 邏輯與畫面，包在一個 IIFE 裡
 - `sw.js`：service worker（網路優先、離線用快取）
-- `index.html`：開頭有錯誤紀錄的 inline script，必須放在其他 script 之前
+- `index.html`：開頭有兩段 inline script，必須放在其他 script 之前：先套用使用者選的外觀（避免閃白），再啟動錯誤紀錄
 - `tests/`：資料檢查、版本號檢查、E2E 測試
 - `docs/requirements.md`：需求與版本規劃，功能有變動時要更新
 

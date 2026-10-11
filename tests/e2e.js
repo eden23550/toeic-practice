@@ -324,6 +324,31 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       expect((await text('.err-count')) === '0 筆', '清除後應該是 0 筆');
     });
 
+    await step('外觀：可切換深色／淺色／跟隨系統，重新開啟後保留', async () => {
+      const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      await page.emulateMedia({ colorScheme: 'light' });
+      await page.click('[data-tab="settings"]');
+      const lightBg = await bg();
+      await page.selectOption('#set-theme', 'dark');
+      const darkBg = await bg();
+      expect(darkBg !== lightBg, '選深色後背景應該變暗');
+      expect((await page.getAttribute('html', 'data-theme')) === 'dark', 'html 應該標記 data-theme="dark"');
+      await page.reload();
+      expect((await page.getAttribute('html', 'data-theme')) === 'dark', '重新開啟後應該保留深色');
+      expect((await bg()) === darkBg, '重新開啟後背景應該還是深色');
+      // 手機是深色外觀，但使用者選淺色
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.click('[data-tab="settings"]');
+      await page.selectOption('#set-theme', 'light');
+      expect((await bg()) === lightBg, '手機是深色時選淺色，背景應該是淺色');
+      // 跟隨系統
+      await page.selectOption('#set-theme', 'auto');
+      expect((await page.getAttribute('html', 'data-theme')) === null, '跟隨系統時不應該有 data-theme');
+      expect((await bg()) === darkBg, '跟隨系統且手機是深色時，背景應該是深色');
+      await page.emulateMedia({ colorScheme: 'light' });
+      expect((await bg()) === lightBg, '跟隨系統且手機是淺色時，背景應該是淺色');
+    });
+
     await step('其他分頁都能正常顯示', async () => {
       for (const tab of ['practice', 'library', 'stats', 'settings']) {
         await page.click(`[data-tab="${tab}"]`);
