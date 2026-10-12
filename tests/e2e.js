@@ -379,6 +379,19 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       }
     });
 
+    await step('句子念出來：重要的字沒聽對就不算過（hospitality 被聽成 security）', async () => {
+      const cases = [
+        ["I'm going to look for work in hospitality.", "I'm going to look for work in security", false],
+        ["I'm going to look for work in hospitality.", 'I am gonna look for work in hospitality', true],
+        ["I'm planning to stay for about a year.", "I'm planning to stay for about year", true],
+        ['Where can I pick up my luggage?', 'where can I pick up my language', false],
+      ];
+      for (const [plain, said, expected] of cases) {
+        const r = await page.evaluate(({ plain, said }) => window.TOEIC_APP.sayPhrasePasses(plain, said), { plain, said });
+        expect(r === expected, `「${said}」對「${plain}」應該${expected ? '' : '不'}算念對`);
+      }
+    });
+
     await step('看字念出來：第一次念對算對、念錯後再念對算模糊、不方便說話會換題型', async () => {
       await page.click('[data-tab="practice"]');
       await page.click('[data-action="start-say"]');

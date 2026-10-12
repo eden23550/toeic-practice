@@ -43,7 +43,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.7.0';
+  var APP_VERSION = '0.7.1';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -1782,6 +1782,31 @@
   var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   var SHADOW_PASS = 80;   // 分數達到這個百分比算唸對
 
+  // 重要的字一定要聽對：句子裡 [ ] 標出的部分（a、in 這種短字除外），以及 5 個字母以上的字。
+  // 只看分數的話，像 hospitality 被聽成 security 還有 89 分，會被當成念對
+  function keyMisses(p, r) {
+    var letters = function (t) { return t.toLowerCase().replace(/[^a-z']/g, ''); };
+    var m = p.en.match(/\[(.+?)\]/);
+    var keys = m ? m[1].split(' ').map(letters) : [];
+    return r.tokens.filter(function (t) {
+      var w = letters(t.text);
+      return !t.ok && (w.length >= 5 || (w.length >= 3 && keys.indexOf(w) >= 0));
+    }).map(function (t) { return t.text.replace(/[^A-Za-z'-]/g, ''); });
+  }
+  function speechPass(p, r) { return r.score >= SHADOW_PASS && !keyMisses(p, r).length; }
+
+  // 幾個候選結果裡挑最好的：先看有沒有過，再看分數
+  function bestSpeech(p, alts) {
+    var best = null;
+    alts.forEach(function (t) {
+      var r = scoreSpeech(p.plain, t);
+      r.pass = speechPass(p, r);
+      r.misses = keyMisses(p, r);
+      if (!best || (r.pass && !best.pass) || (r.pass === best.pass && r.score > best.score)) best = r;
+    });
+    return best;
+  }
+
   // 辨識結果常把縮寫或數字寫成不同形式，比對前統一展開
   var CONTRACTIONS = {
     "i'm": 'i am', "it's": 'it is', "that's": 'that is', "what's": 'what is', "where's": 'where is',
@@ -1790,6 +1815,8 @@
     "isn't": 'is not', "aren't": 'are not', "wasn't": 'was not', "i'll": 'i will', "you'll": 'you will',
     "we'll": 'we will', "i'd": 'i would', "you're": 'you are', "we're": 'we are', "they're": 'they are',
     "i've": 'i have', "we've": 'we have', "haven't": 'have not', "couldn't": 'could not',
+    // iPhone 的辨識常把 going to、want to 寫成 gonna、wanna
+    'gonna': 'going to', 'wanna': 'want to',
   };
   // 打字時常省略撇號（dont、im），也當作縮寫；its、well、were 這種本身就是單字的不算
   var NO_APOSTROPHE = {};
@@ -1974,18 +2001,14 @@
     shadow.result = null;
     shadow.error = null;
     shadow.rec = listenOnce(3, function (alts) {
-      var best = null;
-      alts.forEach(function (t) {
-        var r = scoreSpeech(p.plain, t);
-        if (!best || r.score > best.score) best = r;
-      });
+      var best = bestSpeech(p, alts);
       shadow.result = best;
       var day = dayRec();
       day.answered++;
       save();
       bump('answered', day.answered);
       // 同一句唸過 80 分只算一次經驗值
-      if (best.score >= SHADOW_PASS && !shadow.awarded[shadow.idx]) {
+      if (best.pass && !shadow.awarded[shadow.idx]) {
         shadow.awarded[shadow.idx] = true;
         shadow.passed++;
         gainXp(XP.shadow);
@@ -2039,7 +2062,8 @@
     var h = '';
     if (st.heard && st.heard.length) {
       h += '<p class="hint center">App 聽到的：「' + esc(st.heard[st.heard.length - 1]) + '」</p>' +
-        '<p class="spell-warn">還不太對，可以先按 🔊 聽一次再念（還有 ' + (SAY_TRIES - st.tries) + ' 次機會）</p>';
+        '<p class="spell-warn">' + (st.result && st.result.misses.length ? '「' + esc(st.result.misses.join('、')) + '」沒念清楚' : '還不太對') +
+        '，可以先按 🔊 聽一次再念（還有 ' + (SAY_TRIES - st.tries) + ' 次機會）</p>';
     }
     if (st.error) h += '<p class="spell-warn" role="alert">' + esc(st.error) + '</p>';
     if (st.tries >= 1) h += '<div class="center">' + speakBtn(target, true) + '</div>';
@@ -2072,13 +2096,8 @@
       if (item.mode === 'say') {
         passed = sayWordMatches(getItem(item.id).word, alts);
       } else {
-        var best = null;
-        alts.forEach(function (t) {
-          var r = scoreSpeech(getItem(item.id).plain, t);
-          if (!best || r.score > best.score) best = r;
-        });
-        st.result = best;
-        passed = best.score >= SHADOW_PASS;
+        st.result = bestSpeech(getItem(item.id), alts);
+        passed = st.result.pass;
       }
     }, function (rec, error) {
       if (session !== null && session.say === st && st.rec === rec) {
@@ -2141,7 +2160,7 @@
     h += '<main class="session-body">';
     if (shadow.done) {
       h += '<div class="summary"><div class="summary-emoji">🎤</div><h1>口說跟讀完成！</h1>' +
-        '<p class="hint center">' + shadow.passed + ' / ' + shadow.ids.length + ' 句達到 ' + SHADOW_PASS + ' 分</p>' +
+        '<p class="hint center">' + shadow.passed + ' / ' + shadow.ids.length + ' 句念對（' + SHADOW_PASS + ' 分以上，重要的字都清楚）</p>' +
         '<button class="btn primary block" data-action="shadow-exit">回到練習</button></div></main></div>';
       $app.innerHTML = h;
       return;
@@ -2157,8 +2176,9 @@
         '<button class="btn primary block" data-action="shadow-next">下一句</button>';
     } else {
       if (r) {
-        h += '<div class="shadow-result"><p class="shadow-score ' + (r.score >= SHADOW_PASS ? 'ok' : 'ng') + '">' + r.score + ' 分</p>' +
-          '<p class="hint center">' + (r.score === 100 ? '完美！每個字都很清楚' : r.score >= SHADOW_PASS ? '唸得不錯！紅色的字可以再加強' : '紅色的字沒有被聽清楚，再試一次看看') + '</p>' +
+        h += '<div class="shadow-result"><p class="shadow-score ' + (r.pass ? 'ok' : 'ng') + '">' + r.score + ' 分</p>' +
+          '<p class="hint center">' + (r.score === 100 ? '完美！每個字都很清楚' : r.pass ? '唸得不錯！紅色的字可以再加強'
+            : r.misses.length ? '重要的字沒有被聽清楚：' + esc(r.misses.join('、')) + '，再試一次看看' : '紅色的字沒有被聽清楚，再試一次看看') + '</p>' +
           '<p class="hint center">App 聽到的：「' + esc(r.transcript) + '」</p></div>';
       }
       if (shadow.error) h += '<p class="spell-warn" role="alert">' + esc(shadow.error) + '</p>';
@@ -2549,7 +2569,8 @@
 
   // ---------- 啟動 ----------
   // 給自動測試使用的內部函式
-  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces, sayWordMatches: sayWordMatches };
+  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces, sayWordMatches: sayWordMatches,
+    sayPhrasePasses: function (plain, said) { return bestSpeech(PHRASE_BY_ID['p:' + plain], [said]).pass; } };
   checkCountry();
   render();
 
