@@ -3,6 +3,14 @@
 
   var WORDS = window.TOEIC_WORDS;
   var CATS = window.TOEIC_CATEGORIES;
+  // 兩條路線：出國生活、多益核心（每日新字依 settings.toeicMix 的比例挑）
+  var TRACKS = [
+    { id: 'toeic', name: '💼 多益核心' },
+    { id: 'life', name: '🧳 出國生活' },
+  ];
+  var MIX_OPTIONS = [[100, '只學多益'], [70, '多益 70%・出國 30%'], [50, '各半'], [30, '多益 30%・出國 70%'], [0, '只學出國']];
+  // 分類篩選：all、分類 id，或 track:toeic 這種整條路線
+  function inCat(w, cat) { return cat === 'all' || w.cat === cat || cat === 'track:' + w.track; }
   var WORD_BY_ID = {};
   var WORD_BY_WORD = {};
   WORDS.forEach(function (w) { WORD_BY_ID[w.id] = w; WORD_BY_WORD[w.word] = w; });
@@ -43,7 +51,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.8.0';
+  var APP_VERSION = '0.9.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -118,7 +126,7 @@
   // ---------- 資料儲存 ----------
   function defaultState() {
     return {
-      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto', sayQuiz: true },
+      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto', sayQuiz: true, toeicMix: 70 },
       words: {},
       daily: {},
       game: defaultGame(),
@@ -495,10 +503,28 @@
   }
 
   function dueWords() { return dueIn(WORDS); }
-  function unseenWords() {
+  function unseenWords(track) {
     return unseenIn(WORDS)
+      .filter(function (w) { return !track || w.track === track; })
       .sort(function (a, b) { return a.lvl - b.lvl || a.order - b.order || a.catIndex - b.catIndex; })
       .map(function (w) { return w.id; });
+  }
+  // 依比例從兩條路線挑新字；一條路線學完了就從另一條補
+  function pickNewWords(n) {
+    if (n <= 0) return [];
+    var toeic = unseenWords('toeic'), life = unseenWords('life');
+    var mix = state.settings.toeicMix;
+    var nT = Math.min(toeic.length, Math.round(n * mix / 100));
+    var nL = Math.min(life.length, n - nT);
+    nT = Math.min(toeic.length, n - nL);
+    var a = toeic.slice(0, nT), b = life.slice(0, nL);
+    // 交錯排列，讓兩條路線的字混在一起學
+    var out = [];
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+      if (a[i]) out.push(a[i]);
+      if (b[i]) out.push(b[i]);
+    }
+    return out;
   }
   function pendingNewWords() { return pendingIn(WORDS); }
   function newQuota() {
@@ -848,7 +874,7 @@
     });
     var pending = pendingNewWords();
     var count = extraNew != null ? extraNew : newQuota();
-    var fresh = pending.concat(unseenWords().slice(0, Math.max(0, count - pending.length)));
+    var fresh = pending.concat(pickNewWords(Math.max(0, count - pending.length)));
     if (extraNew != null) reviews = [];
     var items = reviews.concat(buildNewItems(fresh));
     startSession('daily', items, true, extraNew != null ? '加碼學習' : '今日學習', 'words');
@@ -895,7 +921,7 @@
 
   function startFree(cat, mode, count, onlyLearned) {
     var pool = WORDS.filter(function (w) {
-      if (cat !== 'all' && w.cat !== cat) return false;
+      if (!inCat(w, cat)) return false;
       if (onlyLearned && !isLearned(w.id)) return false;
       return true;
     });
@@ -1069,8 +1095,10 @@
 
     h += '<section class="card"><h2>自由練習</h2><p class="hint">自選分類與題型，不影響複習排程。</p>';
     h += '<div class="form-grid">';
-    h += '<label>分類<select id="free-cat"><option value="all">全部分類</option>' +
-      CATS.map(function (c) { return '<option value="' + c.id + '">' + c.icon + ' ' + c.name + '</option>'; }).join('') + '</select></label>';
+    h += '<label>分類<select id="free-cat"><option value="all">全部分類</option>' + TRACKS.map(function (t) {
+      return '<optgroup label="' + t.name + '"><option value="track:' + t.id + '">全部' + t.name.slice(2) + '</option>' +
+        CATS.filter(function (c) { return c.track === t.id; }).map(function (c) { return '<option value="' + c.id + '">' + c.icon + ' ' + c.name + '</option>'; }).join('') + '</optgroup>';
+    }).join('') + '</select></label>';
     h += '<label>題型<select id="free-mode"><option value="mixed">綜合</option>' +
       PRACTICE_MODES.map(function (m) { return '<option value="' + m + '">' + MODE_LABEL[m] + '</option>'; }).join('') + '</select></label>';
     h += '<label>題數<select id="free-count"><option>10</option><option>20</option><option>30</option></select></label>';
@@ -1251,7 +1279,11 @@
   function viewLibrary() {
     var h = '<header class="page-head"><h1>單字庫</h1></header>';
     h += '<input id="lib-search" class="search" type="search" placeholder="搜尋英文或中文…" value="' + esc(libFilter.q) + '">';
-    h += '<div class="chips">' + chip('all', '全部') + CATS.map(function (c) { return chip(c.id, c.icon + ' ' + c.name); }).join('') + '</div>';
+    h += '<div class="chips">' + chip('all', '全部（' + WORDS.length + '）') + '</div>';
+    TRACKS.forEach(function (t) {
+      h += '<div class="chips"><span class="chip-label">' + t.name + '</span>' + chip('track:' + t.id, '全部') +
+        CATS.filter(function (c) { return c.track === t.id; }).map(function (c) { return chip(c.id, c.icon + ' ' + c.name); }).join('') + '</div>';
+    });
     h += '<div id="lib-list">' + libraryList() + '</div>';
     return h;
   }
@@ -1263,7 +1295,7 @@
   function libraryList() {
     var q = normalize(libFilter.q);
     var list = WORDS.filter(function (w) {
-      if (libFilter.cat !== 'all' && w.cat !== libFilter.cat) return false;
+      if (!inCat(w, libFilter.cat)) return false;
       if (!q) return true;
       return w.word.toLowerCase().indexOf(q) >= 0 || w.zh.indexOf(libFilter.q.trim()) >= 0;
     });
@@ -1425,8 +1457,18 @@
     h += '</div></section>';
 
     // 各分類
-    h += '<section class="card"><h2>各分類表現</h2><p class="hint">正確率低的分類就是需要加強的情境。</p><ul class="cat-stats">';
-    CATS.forEach(function (c) {
+    h += '<section class="card"><h2>各分類表現</h2><p class="hint">正確率低的分類就是需要加強的情境。</p>';
+    TRACKS.forEach(function (t) {
+      var tw = WORDS.filter(function (w) { return w.track === t.id; });
+      var tl = tw.filter(function (w) { return isLearned(w.id); }).length;
+      h += '<h3 class="track-title">' + t.name + '<span class="cs-num">' + tl + '/' + tw.length + '</span></h3><ul class="cat-stats">';
+      CATS.filter(function (c) { return c.track === t.id; }).forEach(statRow);
+      h += '</ul>';
+    });
+    h += '</section>';
+    return h;
+
+    function statRow(c) {
       var learned = 0, cc = 0, cw = 0;
       c.words.forEach(function (w) {
         var r = state.words[w[0]];
@@ -1437,9 +1479,7 @@
       h += '<li><div class="cs-head"><span>' + c.icon + ' ' + c.name + '</span><span class="cs-num">' +
         learned + '/' + c.words.length + ' · 正確率 ' + acc + '</span></div>' +
         '<div class="progress"><div style="width:' + pct(learned, c.words.length) + '%"></div></div></li>';
-    });
-    h += '</ul></section>';
-    return h;
+    }
   }
 
   function viewSettings() {
@@ -1454,6 +1494,10 @@
     h += '<label class="row">每日新字數量<select id="set-daily">' + [5, 10, 15, 20, 25, 30, 40, 50].map(function (n) {
       return '<option' + (n === s.dailyNew ? ' selected' : '') + '>' + n + '</option>';
     }).join('') + '</select></label>';
+    h += '<label class="row">新字比例<select id="set-mix">' + MIX_OPTIONS.map(function (m) {
+      return '<option value="' + m[0] + '"' + (m[0] === s.toeicMix ? ' selected' : '') + '>' + m[1] + '</option>';
+    }).join('') + '</select></label>' +
+      '<p class="hint">每日新字從「💼 多益核心」和「🧳 出國生活」兩條路線依比例挑選；其中一條學完了會自動從另一條補。</p>';
     h += '<label class="row">每日新句型數量<select id="set-daily-phrases">' + [3, 5, 8, 10].map(function (n) {
       return '<option' + (n === s.dailyNewPhrases ? ' selected' : '') + '>' + n + '</option>';
     }).join('') + '</select></label>' +
@@ -2547,7 +2591,7 @@
         var mode = document.getElementById('free-mode').value;
         var count = +document.getElementById('free-count').value;
         var onlyLearned = document.getElementById('free-scope').value === 'learned';
-        var hasLearned = WORDS.some(function (w) { return isLearned(w.id) && (cat === 'all' || w.cat === cat); });
+        var hasLearned = WORDS.some(function (w) { return isLearned(w.id) && inCat(w, cat); });
         if (onlyLearned && !hasLearned) {
           alert('這個分類還沒有學過的字，請改選「所有單字」或先完成今日學習。');
           return;
@@ -2613,6 +2657,7 @@
     var s = state.settings;
     if (id === 'set-daily') s.dailyNew = +e.target.value;
     else if (id === 'set-daily-phrases') s.dailyNewPhrases = +e.target.value;
+    else if (id === 'set-mix') s.toeicMix = +e.target.value;
     else if (id === 'set-accent') s.accent = e.target.value;
     else if (id === 'set-rate') s.rate = +e.target.value;
     else if (id === 'set-auto') s.autoSpeak = e.target.checked;

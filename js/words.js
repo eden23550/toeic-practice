@@ -2,9 +2,10 @@
 // [英文, KK 音標, 詞性, 中文, 常用搭配, 難度 1~3, 詞性變化題的干擾選項, [[例句, 中譯], ...]]
 // - 例句用 [ ] 標出目標字，形式必須和英文欄位相同
 // - 干擾選項放進每個例句都必須說不通，避免一題有兩個答案；沒有適合的就留空陣列
+// - 每個分類屬於一條路線（track）：life 出國生活、toeic 多益核心，每日新字依設定的比例從兩條路線挑
 window.TOEIC_CATEGORIES = [
   {
-    id: 'daily', name: '日常生活', icon: '🏠', words: [
+    id: 'daily', track: 'life', name: '日常生活', icon: '🏠', words: [
       ['appointment', 'əˋpɔɪntmənt', 'n.', '約會；預約', 'make an appointment', 1, ['appoint', 'appointed'], [
         ['I made an [appointment] to get my hair cut.', '我預約了剪頭髮。'],
         ['Please call us if you need to change your [appointment].', '如果需要更改預約，請打電話給我們。'],
@@ -108,7 +109,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'travel', name: '旅遊交通', icon: '✈️', words: [
+    id: 'travel', track: 'life', name: '旅遊交通', icon: '✈️', words: [
       ['reservation', 'ˏrɛzɚˋveʃən', 'n.', '預訂', 'make a reservation', 1, ['reserved', 'reserving'], [
         ['I have a [reservation] under the name Chen.', '我有用陳的名字預訂。'],
         ['You can cancel your [reservation] up to 24 hours before.', '你最晚可以在 24 小時前取消預訂。'],
@@ -212,7 +213,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'dining', name: '飲食餐廳', icon: '🍽️', words: [
+    id: 'dining', track: 'life', name: '飲食餐廳', icon: '🍽️', words: [
       ['menu', 'ˋmɛnju', 'n.', '菜單', 'on the menu', 1, [], [
         ['Could we see the [menu], please?', '可以給我們看一下菜單嗎？'],
         ['Is there anything on the [menu] without meat?', '菜單上有沒有不含肉的餐點？'],
@@ -316,7 +317,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'shopping', name: '購物消費', icon: '🛍️', words: [
+    id: 'shopping', track: 'life', name: '購物消費', icon: '🛍️', words: [
       ['receipt', 'rɪˋsit', 'n.', '收據', 'keep the receipt', 1, ['receive', 'recipe'], [
         ['Please keep your [receipt].', '請保留您的收據。'],
         ['You need the [receipt] to return the item.', '退貨需要收據。'],
@@ -420,7 +421,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'housing', name: '租屋居住', icon: '🔑', words: [
+    id: 'housing', track: 'life', name: '租屋居住', icon: '🔑', words: [
       ['rent', 'rɛnt', 'n.', '房租', 'pay the rent', 1, ['rented', 'rentable'], [
         ['The [rent] is due on the first of each month.', '房租在每月一號到期。'],
         ['How much is the [rent] for this apartment?', '這間公寓房租多少？'],
@@ -524,7 +525,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'health', name: '健康醫療', icon: '🏥', words: [
+    id: 'health', track: 'life', name: '健康醫療', icon: '🏥', words: [
       ['symptom', 'ˋsɪmptəm', 'n.', '症狀', 'common symptom', 2, ['symptomatic', 'symptoms'], [
         ['A sore throat is a common [symptom] of a cold.', '喉嚨痛是感冒的常見症狀。'],
         ['A high fever is a serious [symptom].', '高燒是嚴重的症狀。'],
@@ -628,7 +629,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'office', name: '辦公職場', icon: '💼', words: [
+    id: 'office', track: 'toeic', name: '辦公職場', icon: '💼', words: [
       ['colleague', 'ˋkɑlig', 'n.', '同事', 'work colleague', 1, ['college', 'collegial'], [
         ['My [colleague] will help you with that.', '我的同事會協助你處理。'],
         ['I had lunch with a [colleague] today.', '我今天和一位同事吃午餐。'],
@@ -732,7 +733,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'meeting', name: '會議溝通', icon: '🗣️', words: [
+    id: 'meeting', track: 'toeic', name: '會議溝通', icon: '🗣️', words: [
       ['agenda', 'əˋdʒɛndə', 'n.', '議程', 'on the agenda', 2, [], [
         ["Let's look at the [agenda] for today.", '我們來看一下今天的議程。'],
         ['The first item on the [agenda] is the budget.', '議程的第一項是預算。'],
@@ -836,7 +837,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'hr', name: '人資招募', icon: '🧑‍💼', words: [
+    id: 'hr', track: 'toeic', name: '人資招募', icon: '🧑‍💼', words: [
       ['applicant', 'ˋæpləkənt', 'n.', '應徵者；申請人', 'job applicant', 2, ['apply', 'applicable'], [
         ['Each [applicant] must send a resume.', '每位應徵者都必須寄履歷。'],
         ['The [applicant] must speak English well.', '應徵者必須英文流利。'],
@@ -940,7 +941,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'finance', name: '財務金融', icon: '💰', words: [
+    id: 'finance', track: 'toeic', name: '財務金融', icon: '💰', words: [
       ['account', 'əˋkaʊnt', 'n.', '帳戶', 'open an account', 1, ['accountant', 'accounting'], [
         ["I'd like to open a bank [account].", '我想開一個銀行帳戶。'],
         ['You can check your [account] online.', '你可以在網路上查看你的帳戶。'],
@@ -1044,7 +1045,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'marketing', name: '行銷業務', icon: '📈', words: [
+    id: 'marketing', track: 'toeic', name: '行銷業務', icon: '📈', words: [
       ['advertise', 'ˋædvɚˏtaɪz', 'v.', '打廣告', 'advertise a product', 2, ['advertisement', 'advertiser', 'advertised'], [
         ['We plan to [advertise] on social media.', '我們打算在社群媒體上打廣告。'],
         ['It is expensive to [advertise] on TV.', '在電視上打廣告很貴。'],
@@ -1148,7 +1149,7 @@ window.TOEIC_CATEGORIES = [
     ],
   },
   {
-    id: 'logistics', name: '物流製造', icon: '📦', words: [
+    id: 'logistics', track: 'toeic', name: '物流製造', icon: '📦', words: [
       ['shipment', 'ˋʃɪpmənt', 'n.', '貨運；一批貨', 'track a shipment', 2, ['shipped', 'shipping'], [
         ['The [shipment] will arrive on Monday.', '這批貨會在星期一到。'],
         ['We received the [shipment] two days late.', '我們晚了兩天才收到這批貨。'],
@@ -1259,7 +1260,7 @@ window.TOEIC_WORDS = window.TOEIC_CATEGORIES.flatMap(function (cat, catIndex) {
       id: w[0], word: w[0], kk: w[1], pos: w[2], zh: w[3], col: w[4], lvl: w[5],
       forms: w[6],
       examples: w[7].map(function (e) { return { en: e[0], zh: e[1] }; }),
-      cat: cat.id, catIndex: catIndex, order: i,
+      cat: cat.id, track: cat.track, catIndex: catIndex, order: i,
     };
   });
 });

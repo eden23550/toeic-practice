@@ -15,7 +15,7 @@ const errors = [];
 const fail = (where, msg) => errors.push(`${where}: ${msg}`);
 
 // ---------- 單字 ----------
-const POS = ['n.', 'v.', 'adj.', 'adv.'];
+const POS = ['n.', 'v.', 'adj.', 'adv.', 'prep.'];
 const words = window.TOEIC_WORDS;
 const wordIds = new Set();
 const wordSet = new Set(words.map((w) => w.word));
@@ -23,6 +23,7 @@ const wordSet = new Set(words.map((w) => w.word));
 window.TOEIC_CATEGORIES.forEach((cat) => {
   if (!cat.id || !cat.name || !cat.icon) fail(`分類 ${cat.id}`, '缺少 id、name 或 icon');
   if (!cat.words.length) fail(`分類 ${cat.id}`, '沒有任何單字');
+  if (!['life', 'toeic'].includes(cat.track)) fail(`分類 ${cat.id}`, '路線（track）必須是 life 或 toeic');
 });
 
 words.forEach((w) => {
