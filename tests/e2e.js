@@ -93,7 +93,8 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
   };
 
   // 依題型作答一題；correct=false 時故意答錯
-  async function answerCurrent(correct = true) {
+  // strict=true 時選擇題也一定照 correct 作答（預設選第一個選項，對錯隨機）
+  async function answerCurrent(correct = true, strict = false) {
     const data = await page.evaluate(() => ({ tag: document.querySelector('.tag').textContent }));
     if (await page.$('[data-action="say-mic"]')) {
       // 看字念出來：答錯就連念 3 次錯的（最後算模糊）
@@ -134,7 +135,15 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       for (const i of correct ? picks : picks.slice().reverse()) await page.click(`.order-pool .token >> nth=${i}`);
       await page.click('[data-action="order-check"]');
     } else if (await page.$('.option:not([disabled])')) {
-      await page.click('.option >> nth=0');
+      if (strict) {
+        const pick = await page.evaluate((c) => {
+          const a = window.TOEIC_APP.currentAnswer();
+          return [...document.querySelectorAll('.option')].map((o) => o.dataset.option).find((o) => (o === a) === c);
+        }, correct);
+        await page.click(`.option[data-option="${pick.replace(/"/g, '\\"')}"]`);
+      } else {
+        await page.click('.option >> nth=0');
+      }
     } else if (!(await page.$('[data-action="next"]'))) {
       throw new Error('不知道怎麼回答這一題：' + data.tag);
     }
@@ -438,6 +447,31 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="exit"]');
       await page.click('[data-tab="settings"]');
       await page.check('#set-say');
+    });
+
+    await step('無盡挑戰：答對越多越難，3 條命用完結束並記錄最高紀錄', async () => {
+      await page.click('[data-tab="practice"]');
+      expect(await page.isEnabled('[data-action="start-endless"]'), '學過 10 個以上應該可以開始無盡挑戰');
+      await page.click('[data-action="start-endless"]');
+      expect((await text('.endless-count')).includes('❤️❤️❤️'), '一開始應該有 3 條命');
+      expect((await text('.endless-tier')).includes('暖身'), '一開始應該是暖身難度');
+      for (let i = 0; i < 10; i++) {
+        await answerCurrent(true, true);
+        expect((await text('.fb-head')).startsWith('✓'), `第 ${i + 1} 題應該答對：` + await text('.fb-head'));
+        await page.click('[data-action="next"]');
+      }
+      expect((await text('.endless-tier')).includes('進階'), '答對 10 題後應該進到進階難度');
+      expect((await text('.endless-count')).includes('🏆 10'), '分數應該是 10');
+      for (let i = 0; i < 3; i++) {
+        await answerCurrent(false, true);
+        expect((await text('.fb-head')).includes('💔'), '答錯應該少一條命：' + await text('.fb-head'));
+        await page.click('[data-action="next"]');
+      }
+      expect((await text('.summary h1')).includes('新紀錄'), '第一次挑戰應該是新紀錄');
+      expect((await text('.endless-score')).includes('10'), '結果應該是 10 題');
+      await page.click('[data-action="exit"]');
+      expect((await text('.endless-card .scene-num')).includes('10'), '練習頁應該顯示最高紀錄 10 題');
+      expect((await page.evaluate(() => JSON.parse(localStorage.getItem('toeic-practice-v1')).game.endlessBest)) === 10, '最高紀錄應該存起來');
     });
 
     await step('生字本移到練習分頁', async () => {
