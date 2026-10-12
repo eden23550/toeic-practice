@@ -43,7 +43,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.7.1';
+  var APP_VERSION = '0.8.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -538,7 +538,7 @@
     return {
       xp: 0, countryXp: 0, country: JOURNEY[0].id, miles: 0, freezes: 0, combo: 0,
       postcards: [JOURNEY[0].stops[0].id], passport: [], frozen: [], freezeChecked: null,
-      missions: null, notices: [{ type: 'welcome' }],
+      missions: null, notices: [{ type: 'welcome' }], endlessBest: 0,
     };
   }
 
@@ -634,6 +634,7 @@
     d_combo: { cat: 'challenge', ev: 'combo', target: 10, text: '連續答對 10 題', max: true },
     d_total: { cat: 'challenge', ev: 'answered', target: 40, text: '今天作答 40 題', max: true },
     d_mistakes: { cat: 'challenge', ev: 'mistakesDone', target: 1, text: '完成一次生字本練習', avail: function () { return mistakeWords().length >= 3; } },
+    d_endless: { cat: 'challenge', ev: 'endlessCorrect', target: 20, text: '無盡挑戰答對 20 題', avail: function () { return endlessPool().length >= ENDLESS_MIN; } },
   };
   var MISSION_CATS = ['word', 'phrase', 'challenge'];
 
@@ -906,19 +907,21 @@
   }
 
   // tag：完成時要算進哪個每日任務（words 今日單字、drill 多益題型）
-  function startSession(kind, items, schedule, title, tag) {
+  // extra：額外放進 session 的資料（例如無盡挑戰的命數）
+  function startSession(kind, items, schedule, title, tag, extra) {
     if (!items.length) return;
     items.forEach(function (it) { if (it.mode) it.mode = resolveMode(it.id, it.mode); });
-    session = {
+    session = Object.assign({
       kind: kind, title: title, items: items, idx: 0, schedule: schedule,
       answered: {}, correct: 0, wrong: 0, wrongIds: [], q: null, revealed: false, tag: tag || null, xp: 0,
-    };
+    }, extra || {});
     renderSession();
   }
 
   function currentItem() { return session.items[session.idx]; }
 
   function nextItem() {
+    if (session.kind === 'endless' && session.lives > 0) session.items.push(nextEndlessItem());
     session.idx++;
     session.q = null;
     session.picked = null;
@@ -964,8 +967,9 @@
       }
     }
     bump('answered', dayRec().answered);
+    if (session.kind === 'endless') endlessAnswered(result);
     // 答錯就在本輪稍後再考一次
-    if (result !== 'correct' && !item.retry && session.kind !== 'free') {
+    if (result !== 'correct' && !item.retry && session.kind !== 'free' && session.kind !== 'endless') {
       var pos = Math.min(session.items.length, session.idx + 4);
       var retryMode = resolveMode(item.id, pickRandom(isPhrase(item.id) ? ['p_listen', 'p_zh2en'] : ['en2zh', 'zh2en', 'listen']));
       session.items.splice(pos, 0, { type: 'quiz', id: item.id, mode: retryMode, retry: true });
@@ -978,6 +982,7 @@
 
   function exitSession() {
     stopSay();
+    if (session && session.kind === 'endless' && !session.finished) finishEndless();
     session = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     render();
@@ -1308,6 +1313,12 @@
 
   function viewPractice() {
     var h = '<header class="hero"><h1>練習</h1><p class="sub">多益題型、口說跟讀與生字本</p></header>';
+    var poolSize = endlessPool().length;
+    h += '<h2 class="section-title">挑戰</h2><div class="scene-list">' +
+      '<button class="scene-card endless-card" data-action="start-endless"' + (poolSize >= ENDLESS_MIN ? '' : ' disabled') + '><span class="scene-icon">♾️</span>' +
+      '<span class="scene-main"><span class="scene-name">無盡挑戰</span>' +
+      '<span class="scene-desc">' + (poolSize >= ENDLESS_MIN ? ENDLESS_LIVES + ' 條命，答對越多題目越難，看你能撐多久' : '先學 ' + ENDLESS_MIN + ' 個單字或句型再來挑戰（目前 ' + poolSize + ' 個）') + '</span></span>' +
+      '<span class="scene-num">最高紀錄<br><b>' + state.game.endlessBest + '</b> 題</span></button></div>';
     h += '<h2 class="section-title">多益題型（每次 10 題）</h2><div class="scene-list">';
     DRILL_ORDER.forEach(function (type) {
       var m = DRILL_SETS[type];
@@ -1483,11 +1494,16 @@
     var item = currentItem();
     var w = getItem(item.id);
     var phrase = isPhrase(item.id);
-    var progress = pct(session.idx, session.items.length);
+    var endless = session.kind === 'endless';
+    // 無盡挑戰：進度條顯示離下一個難度還有多遠，右上角是分數和剩下的命
+    var progress = endless ? endlessTierProgress() : pct(session.idx, session.items.length);
     var h = '<div class="session"><header class="session-head">' +
       '<button class="icon-btn" data-action="exit" aria-label="離開">✕</button>' +
       '<div class="progress thin"><div style="width:' + progress + '%"></div></div>' +
-      '<span class="count">' + (session.idx + 1) + '/' + session.items.length + '</span></header>';
+      (endless
+        ? '<span class="count endless-count">🏆 ' + session.correct + '　' + '❤️'.repeat(session.lives) + '🤍'.repeat(ENDLESS_LIVES - session.lives) + '</span></header>'
+        : '<span class="count">' + (session.idx + 1) + '/' + session.items.length + '</span></header>');
+    if (endless) h += '<p class="endless-tier">' + ENDLESS_TIERS[endlessTier()].name + '</p>';
     h += '<main class="session-body">';
 
     if (item.type === 'intro') {
@@ -1771,10 +1787,13 @@
     if (session.kind === 'free' && r === 'wrong') {
       head = '<div class="fb-head ng">✗ 答錯了' + (drill ? '，看看解析' : w.type === 'phrase' ? '，再看一次這句' : '，已加入生字本') + '</div>';
     }
+    if (session.kind === 'endless' && r !== 'correct') {
+      head = '<div class="fb-head ng">' + (session.lives > 0 ? '💔 少了一條命，還剩 ' + session.lives + ' 條' : '💔 沒有命了，挑戰結束') + '</div>';
+    }
     if (session.lastXp) head = head.replace('</div>', '<span class="xp-pill">+' + session.lastXp + ' XP</span></div>');
     var card = drill ? drillCard(w) : w.type === 'phrase' ? phraseCard(w) : wordCard(w, session.q ? session.q.exIdx : 0);
     return '<div class="feedback">' + head + optionNotes(session.q) + card + '</div>' +
-      '<button class="btn primary block" data-action="next">下一題</button>' +
+      '<button class="btn primary block" data-action="next">' + (session.kind === 'endless' && session.lives <= 0 ? '看結果' : '下一題') + '</button>' +
       '<button class="btn link report" data-action="report">🚩 這題怪怪的？回報這題</button>';
   }
 
@@ -2141,6 +2160,93 @@
     renderSession();
   }
 
+  // ---------- 無盡挑戰 ----------
+  // 只出學過的單字和句型，3 條命，答對越多題型越難；不影響複習排程，答錯的單字一樣進生字本
+  var ENDLESS_LIVES = 3;
+  var ENDLESS_MIN = 10;
+  var ENDLESS_TIERS = [
+    { from: 0, name: '🟢 暖身', words: ['en2zh', 'zh2en'], phrases: ['p_listen', 'p_zh2en'] },
+    { from: 10, name: '🟡 進階', words: ['fill', 'listen', 'zh2en'], phrases: ['p_order', 'p_reply', 'p_listen'] },
+    { from: 25, name: '🔴 高手', words: ['spell', 'fill', 'say'], phrases: ['p_type', 'p_order', 'p_say'] },
+  ];
+
+  function endlessPool() {
+    return WORDS.concat(PHRASES).filter(function (x) { return isLearned(x.id); });
+  }
+  function endlessTier() {
+    var t = 0;
+    ENDLESS_TIERS.forEach(function (x, i) { if (session.correct >= x.from) t = i; });
+    return t;
+  }
+  function endlessTierProgress() {
+    var t = endlessTier();
+    var next = ENDLESS_TIERS[t + 1];
+    if (!next) return 100;
+    return pct(session.correct - ENDLESS_TIERS[t].from, next.from - ENDLESS_TIERS[t].from);
+  }
+
+  // 下一題：避開最近出過的 15 個，依目前難度挑題型
+  function nextEndlessItem() {
+    var recent = session.recent;
+    var pool = session.pool.filter(function (x) { return recent.indexOf(x.id) < 0; });
+    var it = pickRandom(pool.length ? pool : session.pool);
+    recent.push(it.id);
+    if (recent.length > Math.min(15, session.pool.length - 1)) recent.shift();
+    var tier = ENDLESS_TIERS[endlessTier()];
+    var modes = (isPhrase(it.id) ? tier.phrases : tier.words).filter(function (m) { return (m !== 'say' && m !== 'p_say') || sayEnabled(); });
+    // 同一個字可能再出現，要讓它重新算一次作答
+    delete session.answered[it.id];
+    return { type: 'quiz', id: it.id, mode: resolveMode(it.id, pickRandom(modes)) };
+  }
+
+  function startEndless() {
+    var pool = endlessPool();
+    if (pool.length < ENDLESS_MIN) return;
+    stopSay();
+    // 先放一個暫時的 session，nextEndlessItem 要用到題庫和目前分數
+    var extra = { pool: pool, recent: [], lives: ENDLESS_LIVES, prevBest: state.game.endlessBest };
+    session = Object.assign({ answered: {}, correct: 0 }, extra);
+    var item = nextEndlessItem();
+    startSession('endless', [item], false, '無盡挑戰', null, extra);
+  }
+
+  function endlessAnswered(result) {
+    if (result === 'correct') {
+      bump('endlessCorrect');
+      if (session.correct > state.game.endlessBest) {
+        if (session.prevBest > 0 && !session.toldRecord) { session.toldRecord = true; toast('🏆 打破最高紀錄！'); }
+        state.game.endlessBest = session.correct;
+        save();
+      }
+    } else {
+      session.lives--;
+    }
+  }
+
+  function finishEndless() {
+    session.finished = true;
+    if (session.correct > state.game.endlessBest) { state.game.endlessBest = session.correct; save(); }
+  }
+
+  function renderEndlessSummary() {
+    var s = session;
+    finishEndless();
+    var record = s.correct > s.prevBest;
+    var h = '<div class="session"><main class="session-body summary">';
+    h += '<div class="summary-emoji">' + (record ? '🏆' : '♾️') + '</div>';
+    h += '<h1>' + (record ? '新紀錄！' : '挑戰結束') + '</h1>';
+    h += '<p class="endless-score"><b>' + s.correct + '</b> 題</p>';
+    h += '<p class="hint center">最高紀錄 ' + state.game.endlessBest + ' 題' + (record && s.prevBest ? '（之前是 ' + s.prevBest + ' 題）' : '') + '・最後到達「' + ENDLESS_TIERS[endlessTier()].name + '」</p>';
+    if (s.xp) h += '<p class="xp-earned">⭐ 這一輪獲得 ' + s.xp + ' XP</p>';
+    if (s.wrongIds.length) {
+      h += '<section class="card"><h2>答錯的項目</h2><ul class="word-list">' +
+        s.wrongIds.map(function (id) { return isPhrase(id) ? phraseRow(PHRASE_BY_ID[id]) : wordRow(WORD_BY_ID[id]); }).join('') + '</ul></section>';
+    }
+    h += '<button class="btn primary block" data-action="start-endless">再挑戰一次</button>' +
+      '<button class="btn block" data-action="exit">回到練習</button></main></div>';
+    $app.innerHTML = h;
+  }
+
   // 練習分頁：學過的單字和句子各挑 5 個（學過的太少就從全部挑），不影響複習排程
   function startSayPractice() {
     var pick = function (list) {
@@ -2301,6 +2407,7 @@
 
   function renderSummary() {
     var s = session;
+    if (s.kind === 'endless') { renderEndlessSummary(); return; }
     var total = s.correct + s.wrong;
     var h = '<div class="session"><main class="session-body summary">';
     h += '<div class="summary-emoji">' + (total && s.wrong === 0 ? '🏆' : '🎉') + '</div>';
@@ -2429,6 +2536,7 @@
       case 'start-shadow': startShadow(); break;
       case 'shadow-mic': startListening(); break;
       case 'start-say': startSayPractice(); break;
+      case 'start-endless': startEndless(); break;
       case 'say-mic': startSay(); break;
       case 'say-skip': skipSay(); break;
       case 'say-giveup': stopSay(); answer('fuzzy'); break;
@@ -2570,7 +2678,8 @@
   // ---------- 啟動 ----------
   // 給自動測試使用的內部函式
   window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces, sayWordMatches: sayWordMatches,
-    sayPhrasePasses: function (plain, said) { return bestSpeech(PHRASE_BY_ID['p:' + plain], [said]).pass; } };
+    sayPhrasePasses: function (plain, said) { return bestSpeech(PHRASE_BY_ID['p:' + plain], [said]).pass; },
+    currentAnswer: function () { return session && session.q ? session.q.answer : null; } };
   checkCountry();
   render();
 

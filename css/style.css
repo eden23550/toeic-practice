@@ -679,3 +679,10 @@ button.stop-btn { cursor: pointer; }
 .typed-diff .ok { color: var(--ok); }
 .typed-diff .typo, .hint .typo { color: var(--warn); text-decoration: underline dotted; text-underline-offset: 4px; }
 .typed-diff .miss, .hint .miss { color: var(--ng); text-decoration: underline wavy; text-underline-offset: 4px; }
+
+/* 無盡挑戰 */
+.endless-card { border: 2px solid var(--st-learning); }
+.endless-count { white-space: nowrap; font-weight: 700; }
+.endless-tier { text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--muted); margin: -4px 0 4px; }
+.endless-score { text-align: center; font-size: 1.2rem; margin: 0; }
+.endless-score b { font-size: 3rem; color: var(--accent); }
