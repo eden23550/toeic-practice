@@ -25,7 +25,7 @@
 - **情境對話**：同一個情境裡，每句「對方說的話」只能對應一個回答。
 - **多益題型**：每個錯誤選項放進句子都必須說不通（文法錯誤或明顯不自然）。像 take a decision、have a break 這種英式或口語也成立的說法不能當錯誤選項。題目文字就是學習紀錄的 id，不要改既有題目。
 - **獎勵制度**（打工度假之旅）存在學習紀錄的 `game` 欄位：經驗值、里程、免死金牌、拿到的明信片（站的 id）、每日任務。站和國家的 id 不要改；新增國家加在 `JOURNEY` 後面，走完前一個國家的使用者會從新國家的第一站出發。經驗值和里程的數字在 `js/app.js` 的 `XP`、`MILES`，改了要同步更新 `docs/requirements.md`。
-- **口說跟讀**用 Web Speech API 的 SpeechRecognition，E2E 測試以假的辨識器模擬；評分函式 `scoreSpeech` 透過 `window.TOEIC_APP` 給測試使用。
+- **口說跟讀**和**看字念出來**用 Web Speech API 的 SpeechRecognition，E2E 測試以假的辨識器模擬（唸出畫面上 `.say-target` 或 `.shadow-target` 的文字，或 `window.__said`）；評分函式 `scoreSpeech` 透過 `window.TOEIC_APP` 給測試使用。
 - **KK 音標**：新增單字時用 CMUdict 比對重音（`pip install cmudict`）；單音節字不標重音。
 - 使用者用 iPhone（從主畫面開啟），朋友用 Android。發音依賴裝置內建的 Web Speech API。
 - **問題回報**走 Google 表單（`REPORT_FORM_URL`，不需登入，回覆在使用者自己的 Google 帳號），用預先填入連結帶入資訊，各題代號在 `REPORT_FIELDS`。表單的題目或「回報類型」選項文字有改動時，要請使用者到表單的「預先填寫表單」重新取得連結，並更新 `REPORT_FIELDS` 和 `tests/e2e.js` 的 `FORM_FIELDS`。打開表單要用 `<a>` 連結，不要用 `window.open`，iPhone 會擋。

@@ -43,7 +43,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.6.0';
+  var APP_VERSION = '0.7.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -71,6 +71,7 @@
   var MODE_LABEL = {
     en2zh: '英選中', zh2en: '中選英', fill: '詞性填空', spell: '拼字', card: '單字卡', listen: '聽力',
     p_listen: '聽句子', p_zh2en: '中翻英', p_order: '句子重組', p_reply: '情境對話', p_type: '打出整句',
+    say: '看字念出來', p_say: '看句子念出來',
     col: '搭配詞', gram: 'Part 5 文法', resp: 'Part 2 聽力應答',
   };
   var PHRASE_MODES = ['p_listen', 'p_zh2en', 'p_order', 'p_reply'];
@@ -117,7 +118,7 @@
   // ---------- 資料儲存 ----------
   function defaultState() {
     return {
-      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto' },
+      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto', sayQuiz: true },
       words: {},
       daily: {},
       game: defaultGame(),
@@ -292,6 +293,10 @@
   // 有些字沒有詞性變化題、有些裝置不能發音，改用其他題型
   function resolveMode(id, mode) {
     if (isDrill(id)) return mode;
+    // 看字念出來：裝置不支援語音辨識，或使用者按了「現在不方便說話」，就換成其他題型
+    if ((mode === 'say' || mode === 'p_say') && (!Recognition || (session && session.noSpeak))) {
+      mode = mode === 'p_say' ? 'p_order' : pickRandom(['zh2en', 'listen', 'fill']);
+    }
     if (isPhrase(id)) {
       var p = PHRASE_BY_ID[id];
       if (mode === 'p_reply' && !p.q) return 'p_zh2en';
@@ -458,11 +463,13 @@
       if (lv <= 1) modes = ['p_listen', 'p_zh2en', 'p_reply'];
       else if (lv === 2) modes = ['p_order', 'p_reply', 'p_listen'];
       else modes = ['p_type', 'p_type', 'p_order', 'p_reply', 'p_listen'];
+      if (lv >= 2 && sayEnabled()) modes.push('p_say');
       return pickRandom(modes);
     }
     if (lv <= 1) modes = ['en2zh', 'card', 'zh2en', 'listen'];
     else if (lv === 2) modes = ['zh2en', 'fill', 'listen', 'en2zh'];
     else modes = ['fill', 'spell', 'listen', 'zh2en', 'card'];
+    if (lv >= 2 && sayEnabled()) modes.push('say');
     return pickRandom(modes);
   }
 
@@ -917,6 +924,8 @@
     session.picked = null;
     session.showText = false;
     session.typed = null;
+    stopSay();
+    session.say = null;
     session.revealed = false;
     if (session.idx >= session.items.length) {
       if (session.tag === 'words') bump('wordsDone');
@@ -968,6 +977,7 @@
   }
 
   function exitSession() {
+    stopSay();
     session = null;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     render();
@@ -1312,7 +1322,10 @@
     h += '</div><h2 class="section-title">口說</h2><div class="scene-list">' +
       '<button class="scene-card" data-action="start-shadow"><span class="scene-icon">🎤</span>' +
       '<span class="scene-main"><span class="scene-name">口說跟讀</span>' +
-      '<span class="scene-desc">跟著唸出國實用句型，App 標出沒唸清楚的字</span></span></button></div>';
+      '<span class="scene-desc">跟著唸出國實用句型，App 標出沒唸清楚的字</span></span></button>' +
+      '<button class="scene-card" data-action="start-say"' + (Recognition ? '' : ' disabled') + '><span class="scene-icon">🗣️</span>' +
+      '<span class="scene-main"><span class="scene-name">看字念出來</span>' +
+      '<span class="scene-desc">' + (Recognition ? '不先聽發音，看著學過的單字和句子直接念（10 題）' : '這個瀏覽器不支援語音辨識') + '</span></span></button></div>';
     var mistakes = mistakeWords().length;
     h += '<h2 class="section-title">複習</h2><div class="scene-list">' +
       '<button class="scene-card" data-action="open-mistakes"><span class="scene-icon">📝</span>' +
@@ -1432,7 +1445,9 @@
     }).join('') + '</select></label>';
     h += '<label class="row">每日新句型數量<select id="set-daily-phrases">' + [3, 5, 8, 10].map(function (n) {
       return '<option' + (n === s.dailyNewPhrases ? ' selected' : '') + '>' + n + '</option>';
-    }).join('') + '</select></label></section>';
+    }).join('') + '</select></label>' +
+      '<label class="row">複習時考「看字念出來」<input type="checkbox" id="set-say"' + (s.sayQuiz !== false ? ' checked' : '') + '></label>' +
+      '<p class="hint">' + (Recognition ? '關掉後，複習只出不用開口的題目；「練習」分頁還是可以自己練。' : '這個瀏覽器不支援語音辨識，不會出念出來的題目。') + '</p></section>';
 
     h += '<section class="card"><h2>發音</h2>';
     h += '<label class="row">口音<select id="set-accent">' + [['en-US', '美式'], ['en-AU', '澳式'], ['en-GB', '英式']].map(function (a) {
@@ -1513,6 +1528,16 @@
   function quizHtml(w, item, q) {
     var h = '<p class="tag">' + MODE_LABEL[item.mode] + (item.retry ? ' · 再試一次' : '') + '</p>';
     var revealed = session.revealed;
+
+    if (item.mode === 'say') {
+      // KK 音標等於告訴你怎麼念，作答後才顯示
+      if (!revealed) {
+        h += '<div class="prompt"><h2 class="prompt-word say-target">' + esc(w.word) + '</h2>' +
+          '<p class="wc-zh"><span class="pos">' + esc(w.pos) + '</span> ' + esc(w.zh) + '</p></div>';
+        return h + sayControls(w.word);
+      }
+      return h + sayHeardHtml() + feedback(w);
+    }
 
     if (item.mode === 'card') {
       h += '<div class="prompt"><h2 class="prompt-word">' + esc(w.word) + '</h2>' + speakBtn(w.word, true) +
@@ -1674,6 +1699,15 @@
         h += '<p class="your-answer">你的答案：<b>' + esc(session.orderInput) + '</b></p>' + feedback(p);
       }
       return h;
+    } else if (item.mode === 'p_say') {
+      if (!revealed) {
+        var r = session.say && session.say.result;
+        h += '<div class="prompt"><p class="shadow-target say-target">' +
+          (r ? r.tokens.map(function (t) { return '<span class="' + (t.ok ? 'ok' : 'miss') + '">' + esc(t.text) + '</span>'; }).join(' ') : esc(p.plain)) +
+          '</p><p class="ex-zh">' + esc(p.zh) + '</p></div>';
+        return h + sayControls(p.plain);
+      }
+      return h + sayHeardHtml() + feedback(p);
     } else if (item.mode === 'p_type') {
       h += '<div class="prompt"><h2 class="prompt-zh">' + esc(p.zh) + '</h2></div>';
       if (!revealed) {
@@ -1731,7 +1765,7 @@
   function feedback(w) {
     var r = session.lastResult;
     var head = r === 'correct' ? '<div class="fb-head ok">✓ 答對了！</div>'
-      : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ ' + (currentItem().mode === 'p_type' ? '差一點！' : '') + (session.schedule ? '明天再複習' : '再多練習幾次') + '</div>'
+      : r === 'fuzzy' ? '<div class="fb-head fuzzy">△ ' + (/^(p_type|say|p_say)$/.test(currentItem().mode) ? '差一點！' : '') + (session.schedule ? '明天再複習' : '再多練習幾次') + '</div>'
         : '<div class="fb-head ng">✗ 答錯了，稍後會再考一次</div>';
     var drill = isDrill(w.id);
     if (session.kind === 'free' && r === 'wrong') {
@@ -1903,26 +1937,48 @@
     if (shadow) shadow.listening = false;
   }
 
-  function startListening() {
-    if (!Recognition || !shadow || shadow.listening) return;
-    var p = PHRASE_BY_ID[shadow.ids[shadow.idx]];
+  // 開麥克風聽一次：onResult 收到候選結果（最多 maxAlt 個），onEnd 在結束時呼叫，沒聽到東西就帶錯誤訊息
+  function listenOnce(maxAlt, onResult, onEnd) {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     var rec = new Recognition();
     rec.lang = state.settings.accent;
     rec.interimResults = false;
     rec.continuous = false;
-    rec.maxAlternatives = 3;
-    shadow.rec = rec;
+    rec.maxAlternatives = maxAlt;
+    var got = false, error = null;
+    rec.onresult = function (e) {
+      got = true;
+      var alts = [];
+      for (var i = 0; i < e.results[0].length; i++) alts.push(e.results[0][i].transcript);
+      onResult(alts);
+    };
+    rec.onerror = function (e) {
+      error = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? '沒有麥克風權限。iPhone 請到「設定 → Safari → 麥克風」允許；Android 請在 Chrome 的網站設定允許麥克風。'
+        : e.error === 'no-speech' ? '沒有聽到聲音，請靠近麥克風再試一次。'
+          : '語音辨識發生問題（' + e.error + '），請再試一次。';
+    };
+    rec.onend = function () { onEnd(rec, got ? null : error || '沒有聽到聲音，請靠近麥克風再試一次。'); };
+    try {
+      rec.start();
+    } catch (err) {
+      setTimeout(function () { onEnd(rec, '無法啟動麥克風，請再試一次。'); });
+    }
+    return rec;
+  }
+
+  function startListening() {
+    if (!Recognition || !shadow || shadow.listening) return;
+    var p = PHRASE_BY_ID[shadow.ids[shadow.idx]];
     shadow.listening = true;
     shadow.result = null;
     shadow.error = null;
-    rec.onresult = function (e) {
-      var alts = e.results[0];
+    shadow.rec = listenOnce(3, function (alts) {
       var best = null;
-      for (var i = 0; i < alts.length; i++) {
-        var r = scoreSpeech(p.plain, alts[i].transcript);
+      alts.forEach(function (t) {
+        var r = scoreSpeech(p.plain, t);
         if (!best || r.score > best.score) best = r;
-      }
+      });
       shadow.result = best;
       var day = dayRec();
       day.answered++;
@@ -1935,27 +1991,146 @@
         gainXp(XP.shadow);
         bump('shadowPass');
       }
-    };
-    rec.onerror = function (e) {
-      shadow.error = e.error === 'not-allowed' || e.error === 'service-not-allowed'
-        ? '沒有麥克風權限。iPhone 請到「設定 → Safari → 麥克風」允許；Android 請在 Chrome 的網站設定允許麥克風。'
-        : e.error === 'no-speech' ? '沒有聽到聲音，請靠近麥克風再試一次。'
-          : '語音辨識發生問題（' + e.error + '），請再試一次。';
-    };
-    rec.onend = function () {
+    }, function (rec, error) {
       if (!shadow || shadow.rec !== rec) return;
       shadow.listening = false;
       shadow.rec = null;
-      if (!shadow.result && !shadow.error) shadow.error = '沒有聽到聲音，請靠近麥克風再試一次。';
+      if (error) shadow.error = error;
       renderShadow();
-    };
-    try {
-      rec.start();
-    } catch (err) {
-      shadow.listening = false;
-      shadow.error = '無法啟動麥克風，請再試一次。';
-    }
+    });
     renderShadow();
+  }
+
+  // ---------- 看字念出來 ----------
+  // 單字：手機回傳的候選結果裡有這個字就算對（多念了 the、a 也沒關係），同音字和英式拼法也算
+  var SAY_TRIES = 3;
+  var HOMOPHONES = {
+    fare: ['fair'], aisle: ['isle', "i'll"], weather: ['whether'], pour: ['poor', 'pore'], leak: ['leek'],
+    tax: ['tacks'], cash: ['cache'], sore: ['soar', 'saw'], pain: ['pane'], load: ['lode'], loan: ['lone'],
+  };
+
+  function sayEnabled() { return !!Recognition && state.settings.sayQuiz !== false; }
+
+  // 統一大小寫、標點和英式拼法（flavour → flavor、prioritise → prioritize），連字號當成空白
+  function sayTokens(text) {
+    return text.normalize('NFKC').toLowerCase().replace(/[’‘]/g, "'").replace(/-/g, ' ')
+      .replace(/[^a-z' ]/g, ' ').split(/\s+/).filter(Boolean)
+      .map(function (t) { return t.length >= 5 ? t.replace(/our$/, 'or').replace(/ourhood$/, 'orhood').replace(/is(e|ed|ing)$/, 'iz$1') : t; });
+  }
+
+  function sayWordMatches(word, alts) {
+    var targets = [word].concat(HOMOPHONES[word] || []).map(function (t) { return sayTokens(t).join(''); });
+    return alts.some(function (alt) {
+      var tk = sayTokens(alt);
+      // 連續幾個字接起來和目標相同就算（check up = check-up、take away = takeaway）
+      for (var i = 0; i < tk.length; i++) {
+        var joined = '';
+        for (var j = i; j < tk.length && j < i + 3; j++) {
+          joined += tk[j];
+          if (targets.indexOf(joined) >= 0) return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  function sayControls(target) {
+    var st = session.say || {};
+    var h = '';
+    if (st.heard && st.heard.length) {
+      h += '<p class="hint center">App 聽到的：「' + esc(st.heard[st.heard.length - 1]) + '」</p>' +
+        '<p class="spell-warn">還不太對，可以先按 🔊 聽一次再念（還有 ' + (SAY_TRIES - st.tries) + ' 次機會）</p>';
+    }
+    if (st.error) h += '<p class="spell-warn" role="alert">' + esc(st.error) + '</p>';
+    if (st.tries >= 1) h += '<div class="center">' + speakBtn(target, true) + '</div>';
+    h += '<button class="mic-btn' + (st.listening ? ' on' : '') + '" data-action="say-mic"' + (st.listening ? ' disabled' : '') + '>' +
+      (st.listening ? '聆聽中…請開始念' : st.tries ? '🎤 再念一次' : '🎤 按一下開始念') + '</button>' +
+      '<p class="hint center">不先聽發音，看著字直接念出來</p>' +
+      '<div class="btn-row"><button class="btn" data-action="say-skip">🤫 現在不方便說話</button>' +
+      '<button class="btn" data-action="say-giveup">看答案</button></div>';
+    return h;
+  }
+
+  function sayHeardHtml() {
+    var st = session.say;
+    if (!st || !st.heard.length) return '';
+    return '<p class="hint center">App 聽到的：「' + esc(st.heard[st.heard.length - 1]) + '」' +
+      (st.passedOn ? '（第 ' + st.passedOn + ' 次念對）' : '') + '</p>';
+  }
+
+  function startSay() {
+    if (!Recognition || !session || session.revealed) return;
+    var item = currentItem();
+    var st = session.say || (session.say = { tries: 0, heard: [], listening: false, result: null, error: null });
+    if (st.listening) return;
+    st.listening = true;
+    st.error = null;
+    var passed = false;
+    st.rec = listenOnce(item.mode === 'say' ? 5 : 3, function (alts) {
+      st.tries++;
+      st.heard.push(alts[0] || '');
+      if (item.mode === 'say') {
+        passed = sayWordMatches(getItem(item.id).word, alts);
+      } else {
+        var best = null;
+        alts.forEach(function (t) {
+          var r = scoreSpeech(getItem(item.id).plain, t);
+          if (!best || r.score > best.score) best = r;
+        });
+        st.result = best;
+        passed = best.score >= SHADOW_PASS;
+      }
+    }, function (rec, error) {
+      if (session !== null && session.say === st && st.rec === rec) {
+        st.listening = false;
+        st.rec = null;
+        if (error) { st.error = error; renderSession(); return; }
+        if (passed) {
+          st.passedOn = st.tries;
+          answer(st.tries === 1 ? 'correct' : 'fuzzy');
+        } else if (st.tries >= SAY_TRIES) {
+          answer('fuzzy');
+        } else {
+          renderSession();
+        }
+      }
+    });
+    renderSession();
+  }
+
+  function stopSay() {
+    var st = session && session.say;
+    if (st && st.rec) {
+      var rec = st.rec;
+      st.rec = null;
+      st.listening = false;
+      try { rec.abort(); } catch (e) { /* 已經停止 */ }
+    }
+  }
+
+  // 不方便說話：這一題和這一輪後面的念出來題都換成其他題型，不扣分
+  function skipSay() {
+    stopSay();
+    session.noSpeak = true;
+    session.say = null;
+    session.q = null;
+    for (var i = session.idx; i < session.items.length; i++) {
+      var it = session.items[i];
+      if (it.mode === 'say' || it.mode === 'p_say') it.mode = resolveMode(it.id, it.mode);
+    }
+    session.spokenIdx = null;
+    renderSession();
+  }
+
+  // 練習分頁：學過的單字和句子各挑 5 個（學過的太少就從全部挑），不影響複習排程
+  function startSayPractice() {
+    var pick = function (list) {
+      var learned = list.filter(function (x) { return isLearned(x.id); });
+      return shuffle(learned.length >= 5 ? learned : list).slice(0, 5);
+    };
+    var items = pick(WORDS).map(function (w) { return { type: 'quiz', id: w.id, mode: 'say' }; })
+      .concat(pick(PHRASES).map(function (p) { return { type: 'quiz', id: p.id, mode: 'p_say' }; }));
+    startSession('free', shuffle(items), false, '看字念出來');
   }
 
   function renderShadow() {
@@ -2015,6 +2190,7 @@
     if (item.mode === 'spell') lines.push('我的拼字：' + (session.spellInput || '（未作答）'));
     if (item.mode === 'p_order') lines.push('我的排列：' + session.orderInput);
     if (item.mode === 'p_type') lines.push('我打的：' + (session.typed ? session.typed.input : '（未作答）'));
+    if ((item.mode === 'say' || item.mode === 'p_say') && session.say) lines.push('App 聽到的：' + session.say.heard.join(' ｜ '));
     lines.push('正確答案：' + ((q && q.answer) || speechText(item.id)));
     return lines.join('\n');
   }
@@ -2232,6 +2408,10 @@
       case 'show-text': session.showText = true; renderSession(); break;
       case 'start-shadow': startShadow(); break;
       case 'shadow-mic': startListening(); break;
+      case 'start-say': startSayPractice(); break;
+      case 'say-mic': startSay(); break;
+      case 'say-skip': skipSay(); break;
+      case 'say-giveup': stopSay(); answer('fuzzy'); break;
       case 'shadow-next': nextShadow(); break;
       case 'shadow-exit': exitShadow(); break;
       case 'start-free': {
@@ -2308,6 +2488,7 @@
     else if (id === 'set-accent') s.accent = e.target.value;
     else if (id === 'set-rate') s.rate = +e.target.value;
     else if (id === 'set-auto') s.autoSpeak = e.target.checked;
+    else if (id === 'set-say') s.sayQuiz = e.target.checked;
     else if (id === 'set-theme') { s.theme = e.target.value; applyTheme(); }
     else if (id === 'import-file') { importData(e.target.files[0]); return; }
     else return;
@@ -2368,7 +2549,7 @@
 
   // ---------- 啟動 ----------
   // 給自動測試使用的內部函式
-  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces };
+  window.TOEIC_APP = { scoreSpeech: scoreSpeech, levelInfo: levelInfo, legXp: legXp, gradeTyped: gradeTyped, orderPieces: orderPieces, sayWordMatches: sayWordMatches };
   checkCountry();
   render();
 

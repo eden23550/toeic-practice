@@ -56,7 +56,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
     window.SpeechRecognition = window.webkitSpeechRecognition = class {
       start() {
         setTimeout(() => {
-          const target = document.querySelector('.shadow-target').textContent.trim();
+          const target = document.querySelector('.say-target, .shadow-target').textContent.trim();
           const transcript = window.__said || target;
           this.onresult && this.onresult({ results: [[{ transcript, confidence: 0.9 }]] });
           this.onend && this.onend();
@@ -95,7 +95,16 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
   // 依題型作答一題；correct=false 時故意答錯
   async function answerCurrent(correct = true) {
     const data = await page.evaluate(() => ({ tag: document.querySelector('.tag').textContent }));
-    if (await page.$('[data-action="show-card"]')) {
+    if (await page.$('[data-action="say-mic"]')) {
+      // 看字念出來：答錯就連念 3 次錯的（最後算模糊）
+      await page.evaluate((c) => { window.__said = c ? null : 'zzz'; }, correct);
+      for (let i = 0; i < 3 && !(await page.$('.fb-head')); i++) {
+        await page.click('[data-action="say-mic"]');
+        await page.waitForFunction(() => document.querySelector('.fb-head') || !document.querySelector('.mic-btn.on'));
+      }
+      await page.waitForSelector('.fb-head');
+      await page.evaluate(() => { window.__said = null; });
+    } else if (await page.$('[data-action="show-card"]')) {
       await page.click('[data-action="show-card"]');
       await page.click(correct ? '[data-rate="correct"]' : '[data-rate="wrong"]');
     } else if (await page.$('#spell-input')) {
@@ -355,6 +364,67 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       }
       const r = await page.evaluate(() => window.TOEIC_APP.scoreSpeech('Can I try this on?', 'can I buy this one'));
       expect(r.tokens.filter((t) => !t.ok).map((t) => t.text).join(' ') === 'try on?', '應該標出沒唸到的 try 和 on?');
+    });
+
+    await step('看字念出來：單字比對接受同音字、英式拼法和連字號', async () => {
+      const cases = [
+        ['fare', ['fair'], true], ['check-up', ['check up'], true], ['flavor', ['flavour'], true],
+        ['neighborhood', ['the neighbourhood'], true], ['takeaway', ['take away'], true],
+        ['prioritize', ['prioritise'], true], ['schedule', ['the schedule'], true],
+        ['tip', ['multiple'], false], ['receipt', ['recipe', 'reset'], false], ['dessert', ['desert'], false],
+      ];
+      for (const [word, alts, expected] of cases) {
+        const r = await page.evaluate(({ word, alts }) => window.TOEIC_APP.sayWordMatches(word, alts), { word, alts });
+        expect(r === expected, `「${word}」聽成「${alts.join('、')}」應該${expected ? '' : '不'}算對`);
+      }
+    });
+
+    await step('看字念出來：第一次念對算對、念錯後再念對算模糊、不方便說話會換題型', async () => {
+      await page.click('[data-tab="practice"]');
+      await page.click('[data-action="start-say"]');
+      expect((await text('.tag')).startsWith('看'), '應該出現念出來的題目');
+      expect(!(await page.$('.prompt .kk')), '作答前不應該顯示 KK 音標');
+      expect(!(await page.$('.session-body .speak')), '第一次念之前不應該有發音按鈕');
+      // 第 1 題：第一次就念對
+      await page.click('[data-action="say-mic"]');
+      await page.waitForSelector('.fb-head');
+      expect((await text('.fb-head')).startsWith('✓'), '第一次念對應該算答對');
+      await page.click('[data-action="next"]');
+      // 第 2 題：先念錯，再念對 → 模糊
+      await page.evaluate(() => { window.__said = 'zzz'; });
+      await page.click('[data-action="say-mic"]');
+      await page.waitForSelector('.spell-warn:has-text("還有 2 次機會")');
+      expect(await page.$('.session-body .speak'), '念錯一次後應該可以聽發音');
+      await page.evaluate(() => { window.__said = null; });
+      await page.click('[data-action="say-mic"]');
+      await page.waitForSelector('.fb-head');
+      expect((await text('.fb-head')).includes('差一點'), '念錯後再念對應該算模糊：' + await text('.fb-head'));
+      expect((await text('.session-body')).includes('第 2 次念對'), '應該顯示第幾次念對');
+      await page.click('[data-action="next"]');
+      // 第 3 題：不方便說話 → 這題和後面的題目都換掉
+      await page.click('[data-action="say-skip"]');
+      const tags = await runSession(20);
+      expect(![...tags].some((t) => t.startsWith('看')), '按了不方便說話後不應該再出念出來的題目：' + [...tags].join('、'));
+      await page.click('[data-action="exit"]');
+    });
+
+    await step('看字念出來：設定關掉後，複習不會出念出來的題目', async () => {
+      await page.click('[data-tab="settings"]');
+      await page.uncheck('#set-say');
+      await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('toeic-practice-v1'));
+        const d = new Date(); const t = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        Object.keys(s.words).filter((k) => !/^[cgl]:/.test(k)).slice(0, 30).forEach((k) => { s.words[k].level = 2; s.words[k].due = t; });
+        localStorage.setItem('toeic-practice-v1', JSON.stringify(s));
+      });
+      await page.reload();
+      await page.click('[data-tab="home"]');
+      await page.click('[data-action="start-daily"]');
+      const tags = await runSession();
+      expect(![...tags].some((t) => t.startsWith('看')), '關掉後不應該出念出來的題目：' + [...tags].join('、'));
+      await page.click('[data-action="exit"]');
+      await page.click('[data-tab="settings"]');
+      await page.check('#set-say');
     });
 
     await step('生字本移到練習分頁', async () => {
@@ -647,7 +717,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
 
     await step('重新整理後紀錄還在', async () => {
       await page.reload();
-      expect(!(await text('.tiles')).includes('0 / 300'), '已學單字應該保留');
+      expect(!/(^|\D)0 \/ 300/.test(await text('.tiles')), '已學單字應該保留：' + await text('.tiles'));
     });
 
     const unexpected = consoleErrors.filter((e) => !e.includes('e2e-test-error'));
