@@ -228,8 +228,9 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       let list = await notes();
       expect(list.length === 4, '應該列出 4 個選項');
       for (const n of list) {
-        const w = await page.evaluate((zh) => window.TOEIC_WORDS.find((x) => x.zh === zh), n.main);
-        expect(w && n.text.includes(w.word), `「${n.main}」應該標出英文 ${w && w.word}`);
+        // 同一個中文可能對應好幾個字（例如 polite、courteous 都是「有禮貌的」）
+        const ws = await page.evaluate((zh) => window.TOEIC_WORDS.filter((x) => x.zh === zh).map((x) => x.word), n.main);
+        expect(ws.some((w) => n.text.includes(w)), `「${n.main}」應該標出英文 ${ws.join(' 或 ')}`);
       }
       expect(list.find((n) => n.main === answer).cls === 'right', '正確答案應該標成綠色');
       expect(list.find((n) => n.main === wrong).cls === 'wrong', '選錯的選項應該標成紅色');
@@ -755,6 +756,42 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="journey-back"]');
     });
 
+    await step('兩條路線：新字比例選「只學多益」時新字都來自多益核心，單字庫可以依路線篩選', async () => {
+      await page.click('[data-tab="settings"]');
+      await page.selectOption('#set-mix', '100');
+      // 讓今天的新字額度重新開始
+      await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('toeic-practice-v1'));
+        Object.values(s.daily).forEach((d) => { d.newCount = 0; });
+        localStorage.setItem('toeic-practice-v1', JSON.stringify(s));
+      });
+      await page.reload();
+      await page.click('[data-tab="home"]');
+      await page.click('[data-action="start-daily"]');
+      const seen = [];
+      for (let i = 0; i < 80 && !(await page.$('.summary')); i++) {
+        if (await page.$('.new-tag')) {
+          seen.push((await page.textContent('.wc-word')).trim());
+          await page.click('[data-action="next"]');
+        } else {
+          await answerCurrent();
+          await page.click('[data-action="next"]');
+        }
+      }
+      expect(seen.length >= 10, '應該有新字介紹：' + seen.length);
+      const tracks = await page.evaluate((ws) => ws.map((w) => window.TOEIC_WORDS.find((x) => x.word === w).track), seen);
+      expect(tracks.every((t) => t === 'toeic'), '只學多益時新字都應該是多益核心：' + seen.join(', '));
+      if (await page.$('[data-action="exit"]')) await page.click('[data-action="exit"]');
+      await page.click('[data-tab="settings"]');
+      await page.selectOption('#set-mix', '70');
+      await page.click('[data-tab="library"]');
+      await page.click('[data-cat="track:toeic"]');
+      expect((await text('#lib-list .hint')).includes('共 450 個字'), '多益核心應該有 450 個字：' + await text('#lib-list .hint'));
+      await page.click('[data-cat="track:life"]');
+      expect((await text('#lib-list .hint')).includes('共 150 個字'), '出國生活應該有 150 個字');
+      await page.click('[data-cat="all"]');
+    });
+
     await step('其他分頁都能正常顯示', async () => {
       for (const tab of ['practice', 'library', 'stats', 'settings']) {
         await page.click(`[data-tab="${tab}"]`);
@@ -764,7 +801,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
 
     await step('重新整理後紀錄還在', async () => {
       await page.reload();
-      expect(!/(^|\D)0 \/ 300/.test(await text('.tiles')), '已學單字應該保留：' + await text('.tiles'));
+      expect(!/(^|\D)0 \/ \d+/.test(await text('.tiles')), '已學單字應該保留：' + await text('.tiles'));
     });
 
     const unexpected = consoleErrors.filter((e) => !e.includes('e2e-test-error'));

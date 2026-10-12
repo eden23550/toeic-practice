@@ -1,14 +1,15 @@
 {
   "name": "toeic-practice",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
-  "description": "多益練習 App：單字訓練與出國實用句型",
+  "description": "多益練習 App：單字訓練（出國生活與多益核心）與出國實用句型",
   "scripts": {
     "test": "npm run test:data && npm run test:version && npm run test:e2e",
     "test:data": "node tests/check-data.js",
     "test:version": "node tests/check-version.js",
     "test:e2e": "node tests/e2e.js",
-    "start": "npx --yes http-server -c-1 -p 8000 ."
+    "start": "npx --yes http-server -c-1 -p 8000 .",
+    "check:kk": "node -e \"global.window={};require('./js/words.js');console.log(JSON.stringify(window.TOEIC_WORDS.map(w=>[w.word,w.kk])))\" | python3 tests/check-kk.py"
   },
   "devDependencies": {
     "playwright": "1.56.1"
