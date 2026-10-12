@@ -1252,6 +1252,1255 @@ window.TOEIC_CATEGORIES = [
       ]],
     ],
   },
+  // ---------- 多益核心（v0.9.0 新增 12 類） ----------
+  {
+    id: 'legal', track: 'toeic', name: '合約法律', icon: '📜', words: [
+      ['clause', 'klɔz', 'n.', '條款', 'a clause in the contract', 2, ['clauses', 'claws'], [
+        ['The contract has a [clause] about late payment.', '合約裡有一條關於延遲付款的條款。'],
+        ['This [clause] protects both the buyer and the seller.', '這項條款同時保障買方和賣方。'],
+      ]],
+      ['terms', 'tɝmz', 'n.', '條件；條款', 'terms and conditions', 1, ['term', 'terminal'], [
+        ['The [terms] of the agreement are listed on page two.', '協議的條款列在第二頁。'],
+        ['Under these [terms], the buyer pays the shipping costs.', '依照這些條件，運費由買方支付。'],
+      ]],
+      ['obligation', 'ˏɑbləˋgeʃən', 'n.', '義務', 'a legal obligation', 2, ['oblige', 'obligatory'], [
+        ['The company has a legal [obligation] to protect customer data.', '公司在法律上有義務保護客戶資料。'],
+        ['You are under no [obligation] to buy anything today.', '您今天沒有義務一定要購買任何東西。'],
+      ]],
+      ['liability', 'ˏlaɪəˋbɪlətɪ', 'n.', '法律責任', 'accept liability for', 3, ['liable', 'reliable'], [
+        ['The hotel accepts no [liability] for valuables left in the room.', '飯店對留在房間內的貴重物品不負任何責任。'],
+        ['The contractor has insurance to cover any [liability] for damage.', '承包商有保險，可以承擔任何損壞的賠償責任。'],
+      ]],
+      ['comply', 'kəmˋplaɪ', 'v.', '遵守', 'comply with regulations', 2, ['compliance', 'compliant'], [
+        ['All employees must [comply] with the safety rules.', '所有員工都必須遵守安全規定。'],
+        ['Suppliers who fail to [comply] with the contract may lose the deal.', '沒有遵守合約的供應商可能會失去這筆生意。'],
+      ]],
+      ['compliance', 'kəmˋplaɪəns', 'n.', '遵守；合規', 'in compliance with', 3, ['comply', 'compliant'], [
+        ['The factory was inspected for [compliance] with safety standards.', '工廠接受了是否符合安全標準的檢查。'],
+        ['We need to ensure full [compliance] with the new law.', '我們必須確保完全遵守新法規。'],
+      ]],
+      ['regulation', 'ˏrɛgjəˋleʃən', 'n.', '規定；法規', 'safety regulations', 2, ['regulate', 'regulatory'], [
+        ['According to the new [regulation], all drivers must carry a license.', '根據新規定，所有駕駛人都必須攜帶駕照。'],
+        ['This [regulation] applies to all food sellers.', '這項法規適用於所有食品販售業者。'],
+      ]],
+      ['violate', 'ˋvaɪəˏlet', 'v.', '違反', 'violate the agreement', 2, ['violation', 'violent'], [
+        ['Sharing these files would [violate] the agreement.', '分享這些檔案會違反協議。'],
+        ["Please do not [violate] the building's no-smoking policy.", '請不要違反大樓的禁菸規定。'],
+      ]],
+      ['penalty', 'ˋpɛnl̩tɪ', 'n.', '罰款；處罰', 'pay a penalty', 2, ['penalize', 'penal'], [
+        ['There is a [penalty] for paying the bill late.', '帳單逾期繳納會被罰款。'],
+        ['The driver had to pay a [penalty] for speeding.', '那位駕駛因為超速必須繳罰款。'],
+      ]],
+      ['terminate', 'ˋtɝməˏnet', 'v.', '終止', 'terminate a contract', 2, ['termination', 'terminal'], [
+        ["Either party may [terminate] the contract with 30 days' notice.", '任何一方都可以在 30 天前通知終止合約。'],
+        ['The company decided to [terminate] its lease early.', '公司決定提前終止租約。'],
+      ]],
+      ['renew', 'rɪˋnju', 'v.', '續約；更新', 'renew a contract', 1, ['renewal', 'renewable'], [
+        ['I need to [renew] my passport before the trip.', '出發前我得去換新護照。'],
+        ['We plan to [renew] the contract for another year.', '我們打算再續約一年。'],
+      ]],
+      ['signature', 'ˋsɪgnətʃɚ', 'n.', '簽名', 'put your signature on', 1, ['signed', 'signify'], [
+        ['We need your [signature] at the bottom of this form.', '我們需要您在這張表格最下方簽名。'],
+        ['The document is not valid without a [signature].', '這份文件沒有簽名就無效。'],
+      ]],
+      ['authorize', 'ˋɔθəˏraɪz', 'v.', '授權；批准', 'authorize a payment', 2, ['authority', 'authorization'], [
+        ['Only the manager can [authorize] a refund.', '只有經理可以批准退款。'],
+        ['Please [authorize] the payment before Friday.', '請在星期五前核准這筆付款。'],
+      ]],
+      ['attorney', 'əˋtɝnɪ', 'n.', '律師', 'hire an attorney', 2, ['attorneys', 'attend'], [
+        ['You should talk to an [attorney] before you sign anything.', '簽任何東西之前，你應該先找律師談談。'],
+        ['The company hired an [attorney] to review the contract.', '公司請了一位律師審閱合約。'],
+      ]],
+      ['dispute', 'dɪˋspjut', 'n./v.', '爭議；糾紛', 'settle a dispute', 2, ['disputed', 'disputable'], [
+        ['The two companies settled the [dispute] out of court.', '兩家公司在庭外解決了糾紛。'],
+        ['A [dispute] over payment delayed the project.', '一場付款糾紛讓專案延誤了。'],
+      ]],
+      ['settlement', 'ˋsɛtl̩mənt', 'n.', '和解；結算', 'reach a settlement', 3, ['settle', 'settled'], [
+        ['The two sides reached a [settlement] last week.', '雙方上週達成了和解。'],
+        ['The [settlement] of the account is due at the end of the month.', '這個帳戶要在月底結清。'],
+      ]],
+      ['confidential', 'ˏkɑnfəˋdɛnʃəl', 'adj.', '機密的', 'confidential information', 2, ['confidence', 'confidentially'], [
+        ['Please keep this information [confidential].', '請對這些資訊保密。'],
+        ['The report contains [confidential] customer data.', '這份報告包含機密的客戶資料。'],
+      ]],
+      ['binding', 'ˋbaɪndɪŋ', 'adj.', '有約束力的', 'a legally binding contract', 3, ['bind', 'bonding'], [
+        ['Once it is signed, the agreement is legally [binding].', '一旦簽署，這份協議就具有法律約束力。'],
+        ['Is a verbal agreement [binding] in Australia?', '在澳洲，口頭協議有約束力嗎？'],
+      ]],
+      ['amendment', 'əˋmɛndmənt', 'n.', '修正案；修訂', 'make an amendment to', 3, ['amend', 'amended'], [
+        ['The board approved an [amendment] to the contract.', '董事會核准了合約的修訂。'],
+        ['Any [amendment] must be made in writing.', '任何修訂都必須以書面方式進行。'],
+      ]],
+      ['expire', 'ɪkˋspaɪr', 'v.', '到期；失效', 'expire at the end of', 1, ['expiration', 'expired'], [
+        ['My passport will [expire] next month.', '我的護照下個月就到期了。'],
+        ['Your membership is about to [expire].', '您的會員資格即將到期。'],
+      ]],
+      ['breach', 'britʃ', 'n./v.', '違反（合約）', 'a breach of contract', 3, ['breached', 'breaches'], [
+        ['Sharing the price list is a clear [breach] of the agreement.', '分享價目表明顯違反了協議。'],
+        ['Late delivery is a [breach] of contract.', '延遲交貨就是違約。'],
+      ]],
+      ['provision', 'prəˋvɪʒən', 'n.', '規定；條款', 'a provision in the contract', 3, ['provide', 'provisional'], [
+        ['The contract includes a [provision] for early termination.', '合約中有一條提前終止的條款。'],
+        ['Under this [provision], the tenant must pay for minor repairs.', '依照這項規定，房客必須支付小修繕的費用。'],
+      ]],
+      ['lawsuit', 'ˋlɔˏsut', 'n.', '訴訟', 'file a lawsuit', 2, ['lawful', 'lawfully'], [
+        ['The customer filed a [lawsuit] against the company.', '那位顧客對公司提起了訴訟。'],
+        ['The company spent two years fighting the [lawsuit].', '公司花了兩年打這場官司。'],
+      ]],
+      ['consent', 'kənˋsɛnt', 'n./v.', '同意', 'written consent', 2, ['consented', 'consensual'], [
+        ["Children need their parents' [consent] to join the trip.", '孩子需要父母同意才能參加這趟旅行。'],
+        ['Photos cannot be used without written [consent].', '沒有書面同意不能使用照片。'],
+      ]],
+      ['enforce', 'ɪnˋfors', 'v.', '執行；實施', 'enforce the rules', 2, ['enforcement', 'enforceable'], [
+        ['The city plans to [enforce] the new parking rules.', '市政府打算實施新的停車規定。'],
+        ["It is the manager's job to [enforce] the dress code.", '執行服裝規定是經理的工作。'],
+      ]],
+    ],
+  },
+  {
+    id: 'tech', track: 'toeic', name: '科技與 IT', icon: '💻', words: [
+      ['software', 'ˋsɔftˏwɛr', 'n.', '軟體', 'install software', 1, [], [
+        ['Please install the latest [software] on your laptop.', '請在你的筆電上安裝最新的軟體。'],
+        ['Our team uses accounting [software] to track expenses.', '我們團隊用會計軟體來記錄開支。'],
+      ]],
+      ['hardware', 'ˋhɑrdˏwɛr', 'n.', '硬體；五金', 'computer hardware', 1, [], [
+        ['The old computer [hardware] needs to be replaced.', '舊的電腦硬體需要汰換。'],
+        ['You can buy screws at the [hardware] store.', '你可以在五金行買到螺絲。'],
+      ]],
+      ['install', 'ɪnˋstɔl', 'v.', '安裝', 'install a program', 1, ['installation', 'installment'], [
+        ['It only takes ten minutes to [install] the program.', '安裝這個程式只要十分鐘。'],
+        ['A technician will come to [install] the printer.', '技術人員會來安裝印表機。'],
+      ]],
+      ['upgrade', 'ʌpˋgred', 'v.', '升級', 'upgrade the system', 1, ['upgraded', 'upgrading'], [
+        ['We need to [upgrade] our computers this year.', '我們今年需要把電腦升級。'],
+        ['You can [upgrade] to a larger room for a small fee.', '您只要付一點費用就可以升級到較大的房間。'],
+      ]],
+      ['device', 'dɪˋvaɪs', 'n.', '裝置', 'a mobile device', 1, ['devise', 'devious'], [
+        ['Please turn off any electronic [device] during takeoff.', '起飛時請關閉所有電子裝置。'],
+        ['This small [device] can track your steps.', '這個小裝置可以記錄你的步數。'],
+      ]],
+      ['network', 'ˋnɛtˏwɝk', 'n.', '網路；網絡', 'a computer network', 1, ['networking', 'networked'], [
+        ['The company has a [network] of stores across Asia.', '這家公司在亞洲各地有連鎖門市網絡。'],
+        ['Is there a wireless [network] I can use here?', '這裡有我可以用的無線網路嗎？'],
+      ]],
+      ['password', 'ˋpæsˏwɝd', 'n.', '密碼', 'change your password', 1, [], [
+        ['Please change your [password] every three months.', '請每三個月更改一次密碼。'],
+        ['Excuse me, what is the Wi-Fi [password]?', '不好意思，Wi-Fi 密碼是什麼？'],
+      ]],
+      ['database', 'ˋdetəˏbes', 'n.', '資料庫', 'a customer database', 2, [], [
+        ['All customer details are stored in the [database].', '所有客戶資料都存在資料庫裡。'],
+        ['The [database] is backed up every night.', '資料庫每天晚上都會備份。'],
+      ]],
+      ['technician', 'tɛkˋnɪʃən', 'n.', '技術人員', 'a computer technician', 2, ['technical', 'technique'], [
+        ['A [technician] will fix the printer this afternoon.', '技術人員今天下午會來修印表機。'],
+        ['Please call the IT [technician] if the screen goes black.', '如果螢幕變黑，請打電話給 IT 技術人員。'],
+      ]],
+      ['malfunction', 'mælˋfʌŋkʃən', 'n./v.', '故障', 'an equipment malfunction', 3, ['malfunctioned', 'malfunctioning'], [
+        ['The delay was caused by a [malfunction] in the system.', '這次延誤是系統故障造成的。'],
+        ['The machine had a [malfunction] and stopped working.', '機器故障，停止運作了。'],
+      ]],
+      ['troubleshoot', 'ˋtrʌbl̩ˏʃut', 'v.', '排除故障', 'troubleshoot a problem', 2, ['troubled', 'troublesome'], [
+        ['Our IT team can help you [troubleshoot] the problem.', '我們的 IT 團隊可以幫你排除問題。'],
+        ['Try to [troubleshoot] the printer before calling support.', '打電話給客服之前，先試著排除印表機的故障。'],
+      ]],
+      ['compatible', 'kəmˋpætəbl̩', 'adj.', '相容的', 'compatible with', 2, ['compatibility', 'compatibly'], [
+        ['Is this charger [compatible] with my phone?', '這個充電器和我的手機相容嗎？'],
+        ['The new software is not [compatible] with older computers.', '新軟體和舊電腦不相容。'],
+      ]],
+      ['backup', 'ˋbækˏʌp', 'n.', '備份', 'make a backup', 1, [], [
+        ['Always make a [backup] of important files.', '重要的檔案一定要備份。'],
+        ['Luckily, we had a [backup] of the report on another drive.', '幸好我們在另一個硬碟裡有這份報告的備份。'],
+      ]],
+      ['access', 'ˋæksɛs', 'n./v.', '使用權；存取', 'have access to', 2, ['accessible', 'accessed'], [
+        ['Only managers have [access] to this room.', '只有經理可以進入這個房間。'],
+        ['You need a password to [access] the files.', '你需要密碼才能存取這些檔案。'],
+      ]],
+      ['attachment', 'əˋtætʃmənt', 'n.', '附件', 'open an attachment', 1, ['attach', 'attached'], [
+        ["The email had an [attachment] that I couldn't open.", '那封電子郵件有一個我打不開的附件。'],
+        ['Do not open an [attachment] from an unknown sender.', '不要打開陌生寄件者的附件。'],
+      ]],
+      ['server', 'ˋsɝvɚ', 'n.', '伺服器', 'a secure server', 1, ['serve', 'serving'], [
+        ['The company [server] crashed last night.', '公司的伺服器昨晚當機了。'],
+        ['Our files are saved on a secure [server].', '我們的檔案存在一台安全的伺服器上。'],
+      ]],
+      ['digital', 'ˋdɪdʒɪtl̩', 'adj.', '數位的', 'digital copies', 1, ['digit', 'digitally'], [
+        ['We sell both printed and [digital] copies of the book.', '這本書我們有賣紙本和電子版。'],
+        ['Most companies now keep [digital] records.', '現在大多數公司都保存數位紀錄。'],
+      ]],
+      ['interface', 'ˋɪntɚˏfes', 'n.', '介面', 'a user interface', 2, ['interfere', 'interference'], [
+        ['The new [interface] is easy to use.', '新的介面很好用。'],
+        ["Users like the app's simple [interface].", '使用者喜歡這個 App 簡單的介面。'],
+      ]],
+      ['automate', 'ˋɔtəˏmet', 'v.', '使自動化', 'automate a process', 2, ['automatic', 'automation'], [
+        ['We plan to [automate] the billing process.', '我們打算把帳單流程自動化。'],
+        ['Software can [automate] many simple tasks.', '軟體可以把許多簡單的工作自動化。'],
+      ]],
+      ['specification', 'ˏspɛsəfəˋkeʃən', 'n.', '規格', 'meet the specifications', 3, ['specify', 'specific'], [
+        ['Each part must be made to the exact [specification].', '每個零件都必須完全依照規格製造。'],
+        ['The engineer wrote a detailed [specification] for the new machine.', '工程師為新機器寫了一份詳細的規格書。'],
+      ]],
+      ['outage', 'ˋaʊtɪdʒ', 'n.', '停電；斷線', 'a power outage', 3, [], [
+        ['A power [outage] shut down the office for three hours.', '一場停電讓辦公室停擺了三個小時。'],
+        ['The internet [outage] affected thousands of customers.', '網路斷線影響了好幾千名客戶。'],
+      ]],
+      ['wireless', 'ˋwaɪrlɪs', 'adj.', '無線的', 'wireless internet', 1, ['wirelessly', 'wiring'], [
+        ['The hotel offers free [wireless] internet.', '飯店提供免費的無線網路。'],
+        ['I bought a [wireless] mouse for my laptop.', '我買了一個無線滑鼠給筆電用。'],
+      ]],
+      ['encrypt', 'ɛnˋkrɪpt', 'v.', '加密', 'encrypt data', 3, ['encryption', 'encrypted'], [
+        ['Always [encrypt] files before you send them.', '傳送檔案前一定要先加密。'],
+        ['The app uses a key to [encrypt] your messages.', '這個 App 用金鑰為你的訊息加密。'],
+      ]],
+      ['prototype', 'ˋprotəˏtaɪp', 'n.', '原型；樣品', 'build a prototype', 2, ['prototypical', 'prototyping'], [
+        ['The team built a [prototype] of the new phone.', '團隊做出了新手機的原型。'],
+        ['This [prototype] is lighter than the first one.', '這個樣品比第一個輕。'],
+      ]],
+      ['update', 'ʌpˋdet', 'v.', '更新', 'update the software', 1, ['updated', 'updating'], [
+        ['Please [update] your address in the system.', '請在系統裡更新您的地址。'],
+        ['Remember to [update] the app before the meeting.', '記得在開會前更新 App。'],
+      ]],
+    ],
+  },
+  {
+    id: 'service', track: 'toeic', name: '客戶服務', icon: '📞', words: [
+      ['inquiry', 'ɪnˋkwaɪrɪ', 'n.', '詢問', 'an inquiry about', 2, ['inquire', 'inquired'], [
+        ['Thank you for your [inquiry] about our prices.', '感謝您詢問我們的價格。'],
+        ['We received an [inquiry] from a customer in Japan.', '我們收到一位日本客戶的詢問。'],
+      ]],
+      ['complaint', 'kəmˋplent', 'n.', '抱怨；客訴', 'make a complaint', 1, ['complain', 'complaining'], [
+        ['We received a [complaint] about the noise last night.', '我們收到一則關於昨晚噪音的客訴。'],
+        ['Please fill out this form to make a [complaint].', '要客訴請填寫這張表格。'],
+      ]],
+      ['respond', 'rɪˋspɑnd', 'v.', '回應', 'respond to an email', 1, ['response', 'responsive'], [
+        ['We will [respond] to your email within 24 hours.', '我們會在 24 小時內回覆您的電子郵件。'],
+        ['Please [respond] by Friday if you plan to attend.', '如果您打算出席，請在星期五前回覆。'],
+      ]],
+      ['satisfaction', 'ˏsætɪsˋfækʃən', 'n.', '滿意', 'customer satisfaction', 2, ['satisfy', 'satisfied'], [
+        ['Customer [satisfaction] is our top priority.', '顧客滿意是我們的第一要務。'],
+        ['The survey measures guest [satisfaction] with our hotel.', '這份問卷調查房客對我們飯店的滿意度。'],
+      ]],
+      ['representative', 'ˏrɛprɪˋzɛntətɪv', 'n.', '代表；客服人員', 'a customer service representative', 2, ['represent', 'represented'], [
+        ['Please hold for the next available [representative].', '請稍候，下一位有空的客服人員將為您服務。'],
+        ['A sales [representative] will call you tomorrow.', '業務代表明天會打電話給您。'],
+      ]],
+      ['hotline', 'ˋhɑtˏlaɪn', 'n.', '服務專線', 'a 24-hour hotline', 1, [], [
+        ['Call our 24-hour [hotline] if you have any problems.', '如果有任何問題，請撥打我們的 24 小時服務專線。'],
+        ['The [hotline] is free for all customers.', '所有顧客都可以免費撥打這支專線。'],
+      ]],
+      ['resolve', 'rɪˋzɑlv', 'v.', '解決', 'resolve a problem', 2, ['resolution', 'resolved'], [
+        ['We will try to [resolve] the problem as soon as possible.', '我們會盡快設法解決這個問題。'],
+        ["The manager helped [resolve] the customer's complaint.", '經理協助處理了那位顧客的客訴。'],
+      ]],
+      ['apologize', 'əˋpɑləˏdʒaɪz', 'v.', '道歉', 'apologize for the delay', 1, ['apology', 'apologetic'], [
+        ['We [apologize] for the delay.', '我們為延誤向您致歉。'],
+        ["I'd like to [apologize] for the mistake on your bill.", '我想為您帳單上的錯誤道歉。'],
+      ]],
+      ['inconvenience', 'ˏɪnkənˋvinjəns', 'n.', '不便', 'apologize for any inconvenience', 2, ['inconvenient', 'inconveniently'], [
+        ['We apologize for any [inconvenience].', '造成您任何不便，我們深感抱歉。'],
+        ['The road work caused great [inconvenience] to local shops.', '道路施工對附近店家造成很大的不便。'],
+      ]],
+      ['compensate', 'ˋkɑmpənˏset', 'v.', '補償', 'compensate sb for sth', 2, ['compensation', 'compensatory'], [
+        ['The airline will [compensate] passengers for the delay.', '航空公司會補償旅客延誤的損失。'],
+        ['We will [compensate] you for the damaged item.', '我們會賠償您損壞的商品。'],
+      ]],
+      ['replacement', 'rɪˋplesmənt', 'n.', '替換品；接替者', 'send a replacement', 2, ['replace', 'replaceable'], [
+        ['The store sent me a [replacement] for the broken lamp.', '店家寄了一盞新的檯燈給我，替換壞掉的那盞。'],
+        ['We are looking for a [replacement] for our retiring manager.', '我們正在找人接替即將退休的經理。'],
+      ]],
+      ['guarantee', 'ˏgærənˋti', 'n./v.', '保證', 'a money-back guarantee', 2, ['guaranteed', 'guarantor'], [
+        ['The TV comes with a two-year [guarantee].', '這台電視附兩年保固。'],
+        ['Can you [guarantee] that it will arrive by Friday?', '你可以保證星期五前送達嗎？'],
+      ]],
+      ['courteous', 'ˋkɝtɪəs', 'adj.', '有禮貌的', 'courteous staff', 3, ['courtesy', 'courteously'], [
+        ['The hotel staff were very [courteous].', '飯店員工非常有禮貌。'],
+        ['Please be [courteous] to every caller.', '請對每一位來電者都保持禮貌。'],
+      ]],
+      ['loyalty', 'ˋlɔɪəltɪ', 'n.', '忠誠度', 'customer loyalty', 2, ['loyal', 'loyally'], [
+        ['We thank our customers for their [loyalty].', '我們感謝顧客長久以來的支持。'],
+        ['Good service builds customer [loyalty].', '好的服務能建立顧客忠誠度。'],
+      ]],
+      ['membership', 'ˋmɛmbɚˏʃɪp', 'n.', '會員資格', 'a membership card', 1, ['member', 'members'], [
+        ['[Membership] is free for students.', '學生可以免費成為會員。'],
+        ['You can renew your gym [membership] online.', '你可以在網路上續辦健身房會員。'],
+      ]],
+      ['subscription', 'səbˋskrɪpʃən', 'n.', '訂閱', 'cancel a subscription', 2, ['subscribe', 'subscriber'], [
+        ['You can cancel your [subscription] at any time.', '您可以隨時取消訂閱。'],
+        ['A one-year [subscription] costs 50 dollars.', '訂閱一年要 50 元。'],
+      ]],
+      ['escalate', 'ˋɛskəˏlet', 'v.', '升級處理；擴大', 'escalate a complaint', 3, ['escalation', 'escalator'], [
+        ['If the problem continues, I will [escalate] it to my manager.', '如果問題持續，我會把它轉給我的主管處理。'],
+        ['The agent decided to [escalate] the complaint to a supervisor.', '客服人員決定把這件客訴轉給主管處理。'],
+      ]],
+      ['prompt', 'prɑmpt', 'adj.', '迅速的', 'a prompt reply', 2, ['promptly', 'promptness'], [
+        ['Thank you for your [prompt] reply.', '謝謝您迅速的回覆。'],
+        ['The customer was happy with our [prompt] service.', '那位顧客對我們迅速的服務很滿意。'],
+      ]],
+      ['voucher', 'ˋvaʊtʃɚ', 'n.', '禮券；抵用券', 'a gift voucher', 2, ['vouch', 'vouchers'], [
+        ['You will receive a $10 [voucher] for your next visit.', '您會收到一張下次消費可用的 10 元抵用券。'],
+        ['This [voucher] can be used at any of our stores.', '這張禮券在我們任何一家分店都能使用。'],
+      ]],
+      ['policy', 'ˋpɑləsɪ', 'n.', '政策；規定', 'a return policy', 1, ['police', 'polish'], [
+        ['Our return [policy] allows refunds within 30 days.', '我們的退貨政策允許 30 天內退款。'],
+        ['Smoking indoors is against company [policy].', '在室內吸菸違反公司規定。'],
+      ]],
+      ['testimonial', 'ˏtɛstəˋmonɪəl', 'n.', '顧客推薦', 'a customer testimonial', 3, ['testify', 'testified'], [
+        ['We posted a customer [testimonial] on our website.', '我們在網站上刊登了一則顧客推薦。'],
+        ['This [testimonial] comes from a happy client in Sydney.', '這則推薦來自一位雪梨的滿意客戶。'],
+      ]],
+      ['reply', 'rɪˋplaɪ', 'n./v.', '回覆', 'reply to an email', 1, ['replied', 'replies'], [
+        ['Please [reply] to this email by Monday.', '請在星期一前回覆這封電子郵件。'],
+        ["I'm still waiting for a [reply] from the hotel.", '我還在等飯店的回覆。'],
+      ]],
+      ['follow up', 'ˋfɑlo ʌp', 'v.', '後續追蹤', 'follow up with a client', 2, ['followed up', 'following up'], [
+        ['I will [follow up] with the client next week.', '我下週會再跟客戶追蹤進度。'],
+        ['Please [follow up] on this order tomorrow.', '請明天追蹤這筆訂單。'],
+      ]],
+      ['on hold', 'ɑn hold', 'prep.', '等候中（電話）', 'put sb on hold', 2, [], [
+        ['Sorry, I have to put you [on hold] for a moment.', '抱歉，我得請您在線上稍候一下。'],
+        ['I was [on hold] for twenty minutes before someone answered.', '我在電話上等了二十分鐘才有人接。'],
+      ]],
+      ['toll-free', 'ˋtolˋfri', 'adj.', '免付費的', 'a toll-free number', 2, [], [
+        ['Call our [toll-free] number for help.', '需要協助請撥打我們的免付費電話。'],
+        ['The [toll-free] line is open from 9 a.m. to 6 p.m.', '免付費專線的服務時間是早上 9 點到晚上 6 點。'],
+      ]],
+    ],
+  },
+  {
+    id: 'facility', track: 'toeic', name: '建築與設施', icon: '🏗️', words: [
+      ['facility', 'fəˋsɪlətɪ', 'n.', '設施；場所', 'sports facility', 2, ['facilitate', 'facilitated'], [
+        ['The hotel has a fitness [facility] on the top floor.', '飯店頂樓有健身設施。'],
+        ['The new research [facility] will open next spring.', '新的研究中心明年春天啟用。'],
+      ]],
+      ['construction', 'kənˋstrʌkʃən', 'n.', '建造；施工', 'under construction', 1, ['construct', 'constructive'], [
+        ['The new bridge is still under [construction].', '新橋還在施工中。'],
+        ['Road [construction] may cause delays on Main Street.', '道路施工可能造成緬因街交通延誤。'],
+      ]],
+      ['blueprint', 'ˋbluˏprɪnt', 'n.', '藍圖；計畫', 'a blueprint for', 2, [], [
+        ['The architect showed us a [blueprint] of the new office.', '建築師給我們看新辦公室的藍圖。'],
+        ['This report is a [blueprint] for our future growth.', '這份報告是我們未來成長的藍圖。'],
+      ]],
+      ['architect', 'ˋɑrkəˏtɛkt', 'n.', '建築師', 'hire an architect', 2, ['architecture', 'architectural'], [
+        ['We hired an [architect] to design our new house.', '我們請了一位建築師設計新房子。'],
+        ['The [architect] explained her plans to the clients.', '建築師向客戶說明她的設計。'],
+      ]],
+      ['site', 'saɪt', 'n.', '地點；工地', 'construction site', 1, ['sight', 'cite'], [
+        ['All visitors must wear a helmet on the construction [site].', '所有訪客在工地都必須戴安全帽。'],
+        ['The company chose a [site] near the harbor for its new factory.', '公司為新工廠選了港口附近的地點。'],
+      ]],
+      ['crew', 'kru', 'n.', '工作人員（一組）', 'a construction crew', 2, ['crews', 'cruise'], [
+        ['A cleaning [crew] comes in every night after nine.', '每晚九點後會有清潔人員進來。'],
+        ['The repair [crew] has fixed the broken pipe.', '維修人員已經修好破掉的水管。'],
+      ]],
+      ['permit', 'ˋpɝmɪt', 'n.', '許可證', 'building permit', 2, ['permitted', 'permissive'], [
+        ['You need a building [permit] to add a second floor.', '要加蓋二樓需要建築許可證。'],
+        ['The city issued a parking [permit] to each resident.', '市政府發給每位居民一張停車許可證。'],
+      ]],
+      ['elevator', 'ˋɛləˏvetɚ', 'n.', '電梯', 'take the elevator', 1, ['elevate', 'elevation'], [
+        ['Please take the [elevator] to the fifth floor.', '請搭電梯到五樓。'],
+        ['The [elevator] is out of order today.', '電梯今天故障了。'],
+      ]],
+      ['entrance', 'ˋɛntrəns', 'n.', '入口', 'main entrance', 1, ['enter', 'entrant'], [
+        ["Let's meet at the main [entrance] at nine.", '我們九點在大門口見。'],
+        ['Please use the side [entrance] during the repairs.', '維修期間請走側門。'],
+      ]],
+      ['lobby', 'ˋlɑbɪ', 'n.', '大廳', 'hotel lobby', 1, ['lobbies', 'lobbyist'], [
+        ['The [lobby] is decorated with local art.', '大廳用在地藝術品裝飾。'],
+        ['Our office building has a large [lobby] with a coffee shop.', '我們的辦公大樓有個附設咖啡店的大廳。'],
+      ]],
+      ['parking lot', 'ˋpɑrkɪŋ ˏlɑt', 'n.', '停車場', 'a parking lot', 1, [], [
+        ['The [parking lot] behind the building is full.', '大樓後面的停車場滿了。'],
+        ["I'll pick you up in the [parking lot] after work.", '下班後我在停車場接你。'],
+      ]],
+      ['electrician', 'ɪˏlɛkˋtrɪʃən', 'n.', '電工', 'call an electrician', 2, ['electric', 'electrical', 'electricity'], [
+        ['We called an [electrician] to fix the lights.', '我們請了電工來修燈。'],
+        ['The [electrician] will check the wiring on Monday.', '電工星期一會來檢查線路。'],
+      ]],
+      ['ventilation', 'ˏvɛntl̩ˋeʃən', 'n.', '通風', 'poor ventilation', 3, ['ventilate', 'ventilated'], [
+        ['The kitchen needs better [ventilation].', '廚房需要更好的通風。'],
+        ['Good [ventilation] keeps the warehouse cool in summer.', '良好的通風讓倉庫夏天保持涼爽。'],
+      ]],
+      ['heating', 'ˋhitɪŋ', 'n.', '暖氣', 'heating system', 1, ['heated', 'heats'], [
+        ['The [heating] in our office broke down this morning.', '我們辦公室的暖氣今天早上壞了。'],
+        ['We pay extra for [heating] in the winter.', '冬天我們要多付暖氣費。'],
+      ]],
+      ['layout', 'ˋleˏaʊt', 'n.', '配置；版面', 'office layout', 2, ['lay out', 'laid out'], [
+        ['The new office [layout] gives everyone more space.', '新的辦公室配置讓每個人有更多空間。'],
+        ['I like the clean [layout] of this website.', '我喜歡這個網站簡潔的版面。'],
+      ]],
+      ['floor plan', 'ˋflor ˏplæn', 'n.', '平面圖', 'open floor plan', 2, [], [
+        ['The agent sent us a [floor plan] of the apartment.', '仲介寄給我們公寓的平面圖。'],
+        ['An open [floor plan] makes the office feel bigger.', '開放式格局讓辦公室感覺更大。'],
+      ]],
+      ['relocate', 'riˋloket', 'v.', '搬遷；調職', 'relocate to', 2, ['relocation', 'relocated'], [
+        ['The company plans to [relocate] its head office to Taichung.', '公司打算把總部搬到台中。'],
+        ['We may need to [relocate] the meeting to a bigger room.', '我們可能需要把會議移到大一點的房間。'],
+      ]],
+      ['premises', 'ˋprɛmɪsɪz', 'n.', '場所；房屋土地', 'on the premises', 3, ['promises', 'premiere'], [
+        ['Smoking is not allowed anywhere on the [premises].', '場所內全面禁菸。'],
+        ['Security guards patrol the [premises] at night.', '警衛晚上會巡邏整個廠區。'],
+      ]],
+      ['janitor', 'ˋdʒænətɚ', 'n.', '清潔工；管理員', 'school janitor', 2, ['janitors', 'janitorial'], [
+        ['The [janitor] cleans the restrooms every evening.', '清潔工每天傍晚打掃廁所。'],
+        ['Please ask a [janitor] to unlock the storage room.', '請找一位管理員來打開儲藏室。'],
+      ]],
+      ['closure', 'ˋkloʒɚ', 'n.', '關閉', 'road closure', 2, ['closed', 'closely'], [
+        ['The road [closure] will last until Friday.', '道路封閉會持續到星期五。'],
+        ['The [closure] of the east entrance is only temporary.', '東側入口只是暫時關閉。'],
+      ]],
+      ['temporary', 'ˋtɛmpəˏrɛrɪ', 'adj.', '暫時的；臨時的', 'temporary staff', 1, ['temporarily', 'temper'], [
+        ['We hired [temporary] workers for the holiday season.', '我們為假期旺季請了臨時工。'],
+        ['This is only a [temporary] solution.', '這只是暫時的解決辦法。'],
+      ]],
+      ['hazard', 'ˋhæzɚd', 'n.', '危險；危害', 'safety hazard', 2, ['hazardous', 'hazardously'], [
+        ['Wet floors are a safety [hazard].', '濕滑的地板有安全上的危險。'],
+        ['Loose cables can be a fire [hazard].', '鬆脫的電線可能引發火災。'],
+      ]],
+      ['adjacent', 'əˋdʒesənt', 'adj.', '鄰近的', 'adjacent to', 3, ['adjacency', 'adjacently'], [
+        ['The parking lot is [adjacent] to the main building.', '停車場就在主大樓旁邊。'],
+        ['Guests can have lunch in the [adjacent] room.', '來賓可以在隔壁的房間用午餐。'],
+      ]],
+      ['landscaping', 'ˋlændˏskepɪŋ', 'n.', '景觀美化', 'landscaping work', 3, ['landscaped', 'landscaper'], [
+        ['The [landscaping] around the office was done by a local company.', '辦公室周圍的景觀是一家本地公司做的。'],
+        ['We hired a company to handle the [landscaping] for the new park.', '我們請了一家公司負責新公園的景觀工程。'],
+      ]],
+      ['cafeteria', 'ˏkæfəˋtɪrɪə', 'n.', '自助餐廳；員工餐廳', 'staff cafeteria', 1, ['cafeterias', 'caffeine'], [
+        ['The [cafeteria] on the second floor opens at 11:30.', '二樓的員工餐廳十一點半開始營業。'],
+        ['Our company [cafeteria] serves free breakfast on Fridays.', '我們公司餐廳每週五提供免費早餐。'],
+      ]],
+    ],
+  },
+  {
+    id: 'media', track: 'toeic', name: '媒體與公關', icon: '📰', words: [
+      ['publish', 'ˋpʌblɪʃ', 'v.', '出版；發表', 'publish an article', 1, ['publication', 'publisher'], [
+        ['The magazine will [publish] my article next month.', '雜誌下個月會刊登我的文章。'],
+        ['We plan to [publish] the survey results on our website.', '我們打算把調查結果公布在網站上。'],
+      ]],
+      ['publication', 'ˏpʌblɪˋkeʃən', 'n.', '出版品；出版', 'monthly publication', 2, ['publish', 'publicize'], [
+        ['The [publication] of the annual report has been delayed.', '年報的出版延後了。'],
+        ['This magazine is a popular [publication] among young readers.', '這本雜誌是年輕讀者喜愛的刊物。'],
+      ]],
+      ['editor', 'ˋɛdɪtɚ', 'n.', '編輯', 'chief editor', 1, ['edition', 'editorial'], [
+        ['The [editor] asked me to shorten my story.', '編輯要我把稿子縮短。'],
+        ['She works as an [editor] at a travel magazine.', '她在一家旅遊雜誌當編輯。'],
+      ]],
+      ['article', 'ˋɑrtɪkl̩', 'n.', '文章；物品', 'read an article', 1, ['articles', 'articulate'], [
+        ['I read an interesting [article] about electric cars.', '我讀了一篇關於電動車的有趣文章。'],
+        ["The [article] was published in Monday's paper.", '這篇文章刊登在星期一的報紙上。'],
+      ]],
+      ['journalist', 'ˋdʒɝnl̩ɪst', 'n.', '記者', 'freelance journalist', 2, ['journal', 'journalism'], [
+        ['A [journalist] called to ask about our new product.', '有位記者打電話來詢問我們的新產品。'],
+        ['She worked as a [journalist] for ten years before joining us.', '她加入我們之前當了十年記者。'],
+      ]],
+      ['press release', 'prɛs rɪˋlis', 'n.', '新聞稿', 'issue a press release', 2, [], [
+        ['We will send out a [press release] about the merger tomorrow.', '我們明天會發布關於合併的新聞稿。'],
+        ['The [press release] was posted on the company website.', '新聞稿已經貼在公司網站上。'],
+      ]],
+      ['coverage', 'ˋkʌvərɪdʒ', 'n.', '報導；保險範圍', 'media coverage', 3, ['covered', 'uncovered'], [
+        ['The product launch received wide media [coverage].', '產品發表會獲得媒體廣泛報導。'],
+        ['This insurance plan offers full [coverage] for dental care.', '這個保險方案全額給付牙齒治療。'],
+      ]],
+      ['broadcast', 'ˋbrɔdˏkæst', 'n./v.', '廣播；播送', 'live broadcast', 2, ['broadcaster', 'broadcasting'], [
+        ['The game will be shown in a live [broadcast] tonight.', '比賽今晚會現場直播。'],
+        ['The station will [broadcast] the speech at 8 p.m.', '電台晚上八點會播出這場演講。'],
+      ]],
+      ['headline', 'ˋhɛdˏlaɪn', 'n.', '標題；頭條', 'make headlines', 1, ['headlines', 'headliner'], [
+        ["The [headline] on today's paper is about the election.", '今天報紙的頭條是關於選舉。'],
+        ['Write a short [headline] for your blog post.', '幫你的部落格文章寫個簡短的標題。'],
+      ]],
+      ['subscriber', 'səbˋskraɪbɚ', 'n.', '訂閱者；用戶', 'paying subscriber', 2, ['subscribe', 'subscription'], [
+        ['As a [subscriber], you can read all our articles online.', '身為訂戶，您可以在線上閱讀我們所有的文章。'],
+        ['Our newest [subscriber] lives in New Zealand.', '我們最新的訂閱者住在紐西蘭。'],
+      ]],
+      ['edition', 'ɪˋdɪʃən', 'n.', '版本；版次', 'the latest edition', 2, ['edited', 'editorial'], [
+        ['The latest [edition] of the guidebook has new maps.', '這本旅遊指南的最新版有新地圖。'],
+        ['The weekend [edition] of the paper comes with a free magazine.', '週末版報紙附贈一本雜誌。'],
+      ]],
+      ['column', 'ˋkɑləm', 'n.', '專欄；（表格的）欄', 'write a column', 2, ['columnist', 'columns'], [
+        ['She writes a weekly [column] for a business magazine.', '她替一本商業雜誌寫每週專欄。'],
+        ['Please enter the prices in the second [column].', '請把價格填在第二欄。'],
+      ]],
+      ['review', 'rɪˋvju', 'n./v.', '評論；審查', 'a positive review', 1, ['reviewer', 'reviewed'], [
+        ['The restaurant got a great [review] in the local paper.', '這家餐廳在地方報紙上得到很好的評價。'],
+        ['Please [review] the contract before you sign it.', '簽約前請先仔細看過合約。'],
+      ]],
+      ['critic', 'ˋkrɪtɪk', 'n.', '評論家', 'film critic', 2, ['critical', 'criticize', 'criticism'], [
+        ['A famous food [critic] visited our restaurant last night.', '昨晚有位知名美食評論家來我們餐廳用餐。'],
+        ['Even the harshest [critic] liked the new design.', '連最嚴厲的評論家都喜歡新設計。'],
+      ]],
+      ['draft', 'dræft', 'n./v.', '草稿；起草', 'first draft', 2, ['drafted', 'drafty'], [
+        ['Please send me the first [draft] by Friday.', '請在星期五前把初稿寄給我。'],
+        ['Could you [draft] a reply to this email?', '你可以幫忙草擬這封信的回覆嗎？'],
+      ]],
+      ['proofread', 'ˋprufˏrid', 'v.', '校對', 'proofread a document', 2, ['proofreader', 'proofreading'], [
+        ['Please [proofread] the report before sending it out.', '報告寄出前請先校對。'],
+        ['I asked a coworker to [proofread] my cover letter.', '我請同事幫我校對求職信。'],
+      ]],
+      ['author', 'ˋɔθɚ', 'n.', '作者', 'best-selling author', 1, ['authorize', 'authored'], [
+        ['The [author] will sign copies of her new book.', '作者會替她的新書簽名。'],
+        ['Who is the [author] of this report?', '這份報告是誰寫的？'],
+      ]],
+      ['manuscript', 'ˋmænjəˏskrɪpt', 'n.', '原稿；手稿', 'submit a manuscript', 3, [], [
+        ['The writer sent her [manuscript] to three publishers.', '作家把原稿寄給三家出版社。'],
+        ['The editor made notes on every page of the [manuscript].', '編輯在原稿的每一頁都做了註記。'],
+      ]],
+      ['copyright', 'ˋkɑpɪˏraɪt', 'n.', '著作權', 'copyright law', 2, ['copyrighted', 'copywriter'], [
+        ['Who holds the [copyright] on this song?', '這首歌的著作權屬於誰？'],
+        ["You must not use this music without the [copyright] owner's permission.", '未經著作權人同意，不得使用這段音樂。'],
+      ]],
+      ['public relations', 'ˋpʌblɪk rɪˋleʃənz', 'n.', '公關', 'public relations department', 2, [], [
+        ['She has worked in [public relations] for over ten years.', '她從事公關工作超過十年。'],
+        ['Our [public relations] team will handle the media questions.', '我們的公關團隊會處理媒體的提問。'],
+      ]],
+      ['spokesperson', 'ˋspoksˏpɝsn̩', 'n.', '發言人', 'company spokesperson', 2, ['spoken', 'spokes'], [
+        ['A [spokesperson] for the airline apologized for the delay.', '航空公司發言人為班機延誤致歉。'],
+        ["The company's [spokesperson] answered questions from reporters.", '公司發言人回答了記者的提問。'],
+      ]],
+      ['statement', 'ˋstetmənt', 'n.', '聲明；對帳單', 'issue a statement', 2, ['state', 'stated'], [
+        ['The company issued a [statement] about the data leak.', '公司針對資料外洩發表了聲明。'],
+        ['Please check your bank [statement] every month.', '請每個月檢查銀行對帳單。'],
+      ]],
+      ['audience', 'ˋɔdɪəns', 'n.', '觀眾；聽眾', 'a large audience', 1, ['audio', 'audition'], [
+        ['The [audience] clapped loudly after the speech.', '演講結束後觀眾熱烈鼓掌。'],
+        ['The show is popular with a young [audience].', '這個節目很受年輕觀眾歡迎。'],
+      ]],
+      ['circulation', 'ˏsɝkjəˋleʃən', 'n.', '發行量；流通；循環', 'daily circulation', 3, ['circulate', 'circulated'], [
+        ["The newspaper's daily [circulation] has dropped this year.", '這份報紙的每日發行量今年下滑了。'],
+        ['Regular exercise improves blood [circulation].', '規律運動能促進血液循環。'],
+      ]],
+      ['publicity', 'pʌbˋlɪsətɪ', 'n.', '宣傳；曝光', 'get publicity', 3, ['publicize', 'publicized'], [
+        ['The festival got a lot of [publicity] online.', '這個節慶在網路上獲得大量曝光。'],
+        ['Bad [publicity] can hurt a small business.', '負面新聞可能傷害小型企業。'],
+      ]],
+    ],
+  },
+  {
+    id: 'events', track: 'toeic', name: '活動與會展', icon: '🎤', words: [
+      ['venue', 'ˋvɛnju', 'n.', '場地', 'event venue', 2, ['avenue', 'revenue'], [
+        ['We need to book a [venue] for the year-end party.', '我們需要預訂尾牙的場地。'],
+        ['The concert [venue] holds about 2,000 people.', '這個演唱會場地可容納約兩千人。'],
+      ]],
+      ['host', 'host', 'n./v.', '主辦；主持（人）', 'host an event', 1, ['hosted', 'hostile'], [
+        ['Our city will [host] the conference next year.', '我們的城市明年將主辦這場會議。'],
+        ['He was the [host] of a popular TV show.', '他曾是一個熱門電視節目的主持人。'],
+      ]],
+      ['organize', 'ˋɔrgəˏnaɪz', 'v.', '籌辦；整理', 'organize an event', 1, ['organization', 'organizer'], [
+        ['Who will [organize] the company picnic this year?', '今年誰要籌辦公司野餐？'],
+        ['I need to [organize] my files before the audit.', '查帳前我得把檔案整理好。'],
+      ]],
+      ['registration', 'ˏrɛdʒɪˋstreʃən', 'n.', '報名；登記', 'online registration', 2, ['register', 'registered'], [
+        ['The [registration] fee includes lunch and coffee.', '報名費包含午餐和咖啡。'],
+        ['Please arrive early to allow time for [registration].', '請提早到場，預留報到的時間。'],
+      ]],
+      ['keynote', 'ˋkiˏnot', 'n.', '主題演講', 'keynote speech', 3, ['keynotes', 'keynoted'], [
+        ['The CEO will deliver a [keynote] on the future of AI.', '執行長將發表關於 AI 未來的主題演講。'],
+        ['Her [keynote] was the highlight of the conference.', '她的主題演講是這場會議的亮點。'],
+      ]],
+      ['speaker', 'ˋspikɚ', 'n.', '演講者；喇叭', 'guest speaker', 1, ['speech', 'spoken'], [
+        ['Our guest [speaker] today is a famous chef.', '今天的特別來賓講者是一位知名主廚。'],
+        ['The [speaker] thanked everyone for coming.', '講者感謝大家蒞臨。'],
+      ]],
+      ['banquet', 'ˋbæŋkwɪt', 'n.', '宴會', 'awards banquet', 2, ['banquets', 'bouquet'], [
+        ['An awards [banquet] will be held at the Grand Hotel.', '頒獎晚宴將在大飯店舉行。'],
+        ['The [banquet] was attended by more than 300 guests.', '這場宴會有三百多位賓客出席。'],
+      ]],
+      ['reception', 'rɪˋsɛpʃən', 'n.', '接待處；歡迎會', 'welcome reception', 2, ['receive', 'receptive'], [
+        ['Please leave your room key at [reception].', '請把房間鑰匙交給櫃檯。'],
+        ['There will be a welcome [reception] after the opening ceremony.', '開幕典禮後會有歡迎酒會。'],
+      ]],
+      ['sponsor', 'ˋspɑnsɚ', 'n./v.', '贊助（商）', 'main sponsor', 2, ['sponsorship', 'sponsored'], [
+        ['A local bank is the main [sponsor] of the marathon.', '一家本地銀行是這場馬拉松的主要贊助商。'],
+        ['Several companies agreed to [sponsor] the event.', '有幾家公司同意贊助這個活動。'],
+      ]],
+      ['seminar', 'ˋsɛməˏnɑr', 'n.', '研討會', 'attend a seminar', 1, ['seminars', 'seminal'], [
+        ["I'm attending a [seminar] on digital marketing next week.", '我下週要參加一場數位行銷研討會。'],
+        ['The [seminar] starts at 2 p.m. in Room 301.', '研討會下午兩點在 301 室開始。'],
+      ]],
+      ['workshop', 'ˋwɝkˏʃɑp', 'n.', '工作坊；工作室', 'hold a workshop', 1, ['workshops', 'workable'], [
+        ['We held a writing [workshop] for new staff.', '我們為新進員工辦了一場寫作工作坊。'],
+        ['The [workshop] is free for all members.', '這個工作坊會員全部免費。'],
+      ]],
+      ['trade show', 'ˋtred ˏʃo', 'n.', '商展', 'attend a trade show', 2, [], [
+        ['We will show our new products at the [trade show] in Tokyo.', '我們會在東京的商展上展出新產品。'],
+        ['The [trade show] attracts buyers from all over the world.', '這個商展吸引來自世界各地的買家。'],
+      ]],
+      ['booth', 'buθ', 'n.', '攤位；亭', 'exhibition booth', 2, ['booths', 'boots'], [
+        ['Our [booth] is next to the main entrance.', '我們的攤位在主要入口旁邊。'],
+        ['Each company gets a [booth] for three days.', '每家公司都有一個攤位，為期三天。'],
+      ]],
+      ['admission', 'ədˋmɪʃən', 'n.', '入場（費）；入學許可', 'free admission', 2, ['admit', 'admitted'], [
+        ['Children under six get free [admission].', '六歲以下兒童免費入場。'],
+        ['[Admission] to the museum is $15.', '博物館門票是十五美元。'],
+      ]],
+      ['invitation', 'ˏɪnvəˋteʃən', 'n.', '邀請（函）', 'accept an invitation', 1, ['invited', 'inviting'], [
+        ['Thank you for your kind [invitation].', '謝謝您的盛情邀請。'],
+        ['We sent an [invitation] to every client.', '我們寄了邀請函給每一位客戶。'],
+      ]],
+      ['ceremony', 'ˋsɛrəˏmonɪ', 'n.', '典禮', 'opening ceremony', 1, ['ceremonial', 'ceremonies'], [
+        ['The opening [ceremony] starts at 10 a.m.', '開幕典禮上午十點開始。'],
+        ['They had a small wedding [ceremony] by the beach.', '他們在海邊辦了一場小型婚禮。'],
+      ]],
+      ['award', 'əˋwɔrd', 'n./v.', '獎；頒發', 'win an award', 1, ['awarded', 'awarding'], [
+        ['She won an [award] for her design work.', '她的設計作品得了獎。'],
+        ['The judges will [award] the prize on Sunday.', '評審將在星期日頒獎。'],
+      ]],
+      ['nominate', 'ˋnɑməˏnet', 'v.', '提名', 'nominate sb for', 2, ['nomination', 'nominee'], [
+        ['You can [nominate] a coworker for Employee of the Month.', '你可以提名同事角逐本月最佳員工。'],
+        ['The committee will [nominate] three candidates.', '委員會將提名三位候選人。'],
+      ]],
+      ['anniversary', 'ˏænəˋvɝsərɪ', 'n.', '週年紀念', 'wedding anniversary', 2, ['anniversaries', 'annual'], [
+        ['The company is celebrating its 50th [anniversary] this year.', '公司今年慶祝成立五十週年。'],
+        ['Our wedding [anniversary] is next Saturday.', '我們的結婚紀念日是下星期六。'],
+      ]],
+      ['auditorium', 'ˏɔdəˋtorɪəm', 'n.', '禮堂', 'school auditorium', 2, ['audience', 'audition'], [
+        ['The awards ceremony will be held in the [auditorium].', '頒獎典禮將在禮堂舉行。'],
+        ['The [auditorium] can seat up to 500 people.', '禮堂最多可容納五百人。'],
+      ]],
+      ['fundraiser', 'ˋfʌndˏrezɚ', 'n.', '募款活動', 'charity fundraiser', 3, ['funded', 'fundraised'], [
+        ['The school held a [fundraiser] to buy new computers.', '學校辦了募款活動來買新電腦。'],
+        ['Our team is organizing a charity [fundraiser] next month.', '我們團隊下個月要舉辦慈善募款活動。'],
+      ]],
+      ['volunteer', 'ˏvɑlənˋtɪr', 'n./v.', '志工；自願', 'volunteer work', 1, ['voluntary', 'voluntarily'], [
+        ['We need one more [volunteer] to help at the front desk.', '我們還需要一位志工在服務台幫忙。'],
+        ['Would you like to [volunteer] at the food festival?', '你想到美食節當志工嗎？'],
+      ]],
+      ['orientation', 'ˏorɪɛnˋteʃən', 'n.', '新人說明會；方向', 'new employee orientation', 2, ['orient', 'oriented'], [
+        ['All new staff must attend [orientation] on their first day.', '所有新進員工第一天都必須參加新人說明會。'],
+        ['The [orientation] for new students begins at 9 a.m.', '新生說明會上午九點開始。'],
+      ]],
+      ['luncheon', 'ˋlʌntʃən', 'n.', '午餐會', 'business luncheon', 3, ['lunches', 'lunchtime'], [
+        ['The club holds a monthly [luncheon] for its members.', '俱樂部每個月為會員舉辦午餐會。'],
+        ['A [luncheon] will be served in the main hall at noon.', '中午會在大廳提供午餐。'],
+      ]],
+      ['lecture', 'ˋlɛktʃɚ', 'n./v.', '演講；講課', 'give a lecture', 1, ['lecturer', 'lectured'], [
+        ['Professor Lin will give a [lecture] on climate change.', '林教授將發表一場關於氣候變遷的演講。'],
+        ['Tickets for the evening [lecture] are free.', '晚間講座的入場券免費。'],
+      ]],
+    ],
+  },
+  {
+    id: 'environment', track: 'toeic', name: '環境與能源', icon: '🌱', words: [
+      ['environmental', 'ɪnˏvaɪrənˋmɛntl̩', 'adj.', '環境的', 'environmental protection', 2, ['environment', 'environmentally'], [
+        ['The factory must follow strict [environmental] regulations.', '這家工廠必須遵守嚴格的環境法規。'],
+        ['The report describes the [environmental] effects of the new highway.', '這份報告說明了新高速公路對環境的影響。'],
+      ]],
+      ['sustainable', 'səˋstenəbl̩', 'adj.', '永續的；可持續的', 'sustainable development', 3, ['sustain', 'sustainability', 'sustainably'], [
+        ['The company is looking for more [sustainable] ways to package its products.', '公司正在尋找更永續的產品包裝方式。'],
+        ['Is this level of growth really [sustainable]?', '這樣的成長幅度真的能持續下去嗎？'],
+      ]],
+      ['renewable', 'rɪˋnjuəbl̩', 'adj.', '可再生的；可續約的', 'renewable energy', 2, ['renew', 'renewal'], [
+        ['The city plans to get half of its power from [renewable] sources.', '市政府計畫有一半的電力來自再生能源。'],
+        ['Wind and solar power are both [renewable].', '風力和太陽能都是可再生的。'],
+      ]],
+      ['energy', 'ˋɛnɚdʒɪ', 'n.', '能源；精力', 'save energy', 1, ['energetic', 'energize'], [
+        ['Turning off the lights when you leave helps save [energy].', '離開時關燈有助於節省能源。'],
+        ["I don't have much [energy] after a long day at work.", '工作了一整天之後，我沒什麼精力了。'],
+      ]],
+      ['emission', 'ɪˋmɪʃən', 'n.', '排放；排放物', 'reduce carbon emissions', 3, ['emit', 'emitted'], [
+        ['The new law limits the [emission] of harmful gases.', '新法限制有害氣體的排放。'],
+        ['This car meets the latest [emission] standards.', '這輛車符合最新的排放標準。'],
+      ]],
+      ['pollution', 'pəˋluʃən', 'n.', '污染', 'air pollution', 1, ['pollute', 'polluted'], [
+        ['Air [pollution] is a serious problem in many big cities.', '空氣污染是許多大城市的嚴重問題。'],
+        ['The factory was fined for causing water [pollution].', '這家工廠因為造成水污染而被罰款。'],
+      ]],
+      ['conserve', 'kənˋsɝv', 'v.', '節約；保存', 'conserve energy', 2, ['conservation', 'conservative'], [
+        ['Please help us [conserve] water by taking shorter showers.', '請縮短淋浴時間，幫我們節約用水。'],
+        ['We turn off the heaters at night to [conserve] energy.', '我們晚上會關掉暖氣來節約能源。'],
+      ]],
+      ['consumption', 'kənˋsʌmpʃən', 'n.', '消耗量；消費', 'energy consumption', 2, ['consume', 'consumer'], [
+        ['The new machines have reduced our energy [consumption] by 20 percent.', '新機器讓我們的能源消耗量減少了百分之二十。'],
+        ['Water [consumption] rises sharply in summer.', '夏天的用水量會大幅上升。'],
+      ]],
+      ['waste', 'west', 'n./v.', '廢棄物；浪費', 'reduce waste', 1, ['wasteful', 'wasted'], [
+        ['The factory has found new ways to reduce [waste].', '這家工廠找到了減少廢棄物的新方法。'],
+        ["Don't [waste] time on emails that aren't important.", '不要把時間浪費在不重要的電子郵件上。'],
+      ]],
+      ['reduce', 'rɪˋdjus', 'v.', '減少；降低', 'reduce costs', 1, ['reduction', 'reduced'], [
+        ['We need to [reduce] the amount of paper we use.', '我們需要減少用紙量。'],
+        ['Using LED lights can [reduce] your electricity bill.', '使用 LED 燈可以降低電費。'],
+      ]],
+      ['eco-friendly', 'ˏikoˋfrɛndlɪ', 'adj.', '環保的', 'eco-friendly products', 2, [], [
+        ['The hotel only uses [eco-friendly] cleaning products.', '這家飯店只使用環保清潔用品。'],
+        ['Bamboo straws are an [eco-friendly] choice.', '竹吸管是環保的選擇。'],
+      ]],
+      ['solar', 'ˋsolɚ', 'adj.', '太陽的；太陽能的', 'solar panels', 1, [], [
+        ['The office building has [solar] panels on the roof.', '這棟辦公大樓的屋頂上有太陽能板。'],
+        ['[Solar] power is cheap and clean in sunny Australia.', '在陽光充足的澳洲，太陽能便宜又乾淨。'],
+      ]],
+      ['carbon footprint', 'ˋkɑrbən ˋfʊtˏprɪnt', 'n.', '碳足跡', 'reduce your carbon footprint', 3, [], [
+        ['Taking the train instead of flying can lower your [carbon footprint].', '搭火車而不搭飛機可以降低你的碳足跡。'],
+        ['The company publishes its [carbon footprint] every year.', '這家公司每年都會公布碳足跡。'],
+      ]],
+      ['climate', 'ˋklaɪmɪt', 'n.', '氣候', 'climate change', 1, ['climatic', 'climatically'], [
+        ['The [climate] in Perth is hot and dry in summer.', '伯斯夏天的氣候炎熱乾燥。'],
+        ['Grapes grow well in a mild [climate].', '葡萄在溫和的氣候下長得很好。'],
+      ]],
+      ['resource', 'ˋrisors', 'n.', '資源', 'natural resources', 1, ['resourceful', 'resourced'], [
+        ['Water is a precious [resource] in dry areas.', '在乾燥地區，水是珍貴的資源。'],
+        ['The library is a great [resource] for new employees.', '圖書館對新進員工來說是很好的資源。'],
+      ]],
+      ['preserve', 'prɪˋzɝv', 'v.', '保護；保存', 'preserve the environment', 2, ['preservation', 'preservative'], [
+        ['The town is working hard to [preserve] its old buildings.', '這個小鎮努力保存它的老建築。'],
+        ['The park was created to [preserve] the forest and its wildlife.', '這座公園是為了保護森林和其中的野生動物而設立的。'],
+      ]],
+      ['landfill', 'ˋlændˏfɪl', 'n.', '垃圾掩埋場', 'send waste to landfill', 3, [], [
+        ['Most of this trash will end up in a [landfill].', '這些垃圾大部分最後都會進到掩埋場。'],
+        ['The city plans to close the old [landfill] next year.', '市政府計畫明年關閉舊的垃圾掩埋場。'],
+      ]],
+      ['disposable', 'dɪˋspozəbl̩', 'adj.', '拋棄式的；用完即丟的', 'disposable cups', 2, ['dispose', 'disposal'], [
+        ['The café has stopped using [disposable] cups.', '這家咖啡店已經不再使用拋棄式杯子。'],
+        ["Please don't use [disposable] chopsticks.", '請不要使用免洗筷。'],
+      ]],
+      ['reusable', 'riˋjuzəbl̩', 'adj.', '可重複使用的', 'reusable bags', 2, ['reuse', 'reusability'], [
+        ['These glass containers are [reusable] and easy to clean.', '這些玻璃容器可以重複使用，而且很好清洗。'],
+        ['Are the plastic lunch boxes [reusable]?', '這些塑膠便當盒可以重複使用嗎？'],
+      ]],
+      ['habitat', 'ˋhæbəˏtæt', 'n.', '棲息地', 'natural habitat', 3, ['inhabit', 'habitable'], [
+        ['The wetland is an important [habitat] for wild birds.', '這片濕地是野鳥重要的棲息地。'],
+        ['The new road will destroy the [habitat] of many animals.', '這條新道路會破壞許多動物的棲息地。'],
+      ]],
+      ['electricity', 'ɪˏlɛkˋtrɪsətɪ', 'n.', '電力；電', 'save electricity', 1, ['electrical', 'electrify'], [
+        ['The storm cut off [electricity] to the whole area.', '暴風雨造成整個地區停電。'],
+        ['Air conditioners use a lot of [electricity].', '冷氣很耗電。'],
+      ]],
+      ['organic', 'ɔrˋgænɪk', 'adj.', '有機的', 'organic food', 1, ['organize', 'organically'], [
+        ['This farm grows [organic] vegetables without chemicals.', '這座農場不用化學藥劑種植有機蔬菜。'],
+        ['[Organic] food is usually more expensive.', '有機食品通常比較貴。'],
+      ]],
+      ['shortage', 'ˋʃɔrtɪdʒ', 'n.', '短缺', 'a shortage of', 2, ['short', 'shorten', 'shortly'], [
+        ['There is a [shortage] of nurses in rural areas.', '鄉下地區缺乏護理師。'],
+        ['The drought led to a serious water [shortage].', '乾旱導致嚴重缺水。'],
+      ]],
+      ['drought', 'draʊt', 'n.', '乾旱', 'a severe drought', 2, [], [
+        ['Farmers lost many crops during the [drought].', '乾旱期間農民損失了許多作物。'],
+        ['The city limited water use because of the [drought].', '因為乾旱，市政府限制用水。'],
+      ]],
+      ['wildlife', 'ˋwaɪldˏlaɪf', 'n.', '野生動物', 'wildlife protection', 2, ['wild', 'wildly'], [
+        ['The national park is home to a lot of [wildlife].', '這座國家公園有許多野生動物。'],
+        ['We saw kangaroos and other [wildlife] on our road trip.', '我們在公路旅行中看到袋鼠和其他野生動物。'],
+      ]],
+    ],
+  },
+  {
+    id: 'biztrip', track: 'toeic', name: '商務出差', icon: '🧳', words: [
+      ['business trip', 'ˋbɪznɪs ˏtrɪp', 'n.', '出差', 'go on a business trip', 1, [], [
+        ['My manager is away on a [business trip] this week.', '我的主管這週出差不在。'],
+        ["I'm going on a [business trip] to Tokyo next month.", '我下個月要去東京出差。'],
+      ]],
+      ['expense report', 'ɪkˋspɛns rɪˋport', 'n.', '費用報告；報帳單', 'submit an expense report', 2, [], [
+        ['Please submit your [expense report] within a week of returning.', '請在回來後一週內交出報帳單。'],
+        ['Keep all your receipts for the [expense report].', '所有收據都要留著報帳用。'],
+      ]],
+      ['lodging', 'ˋlɑdʒɪŋ', 'n.', '住宿', 'food and lodging', 3, ['lodged', 'lodger'], [
+        ['The company will pay for your travel and [lodging].', '公司會支付你的交通和住宿費用。'],
+        ['Finding cheap [lodging] near the conference center was hard.', '要在會議中心附近找到便宜的住宿很難。'],
+      ]],
+      ['shuttle', 'ˋʃʌtl̩', 'n.', '接駁車', 'airport shuttle', 2, ['shuttled', 'shuttling'], [
+        ['The hotel offers a free [shuttle] to the airport.', '飯店提供免費的機場接駁車。'],
+        ['The [shuttle] leaves every 20 minutes from the main gate.', '接駁車每 20 分鐘從大門口發車。'],
+      ]],
+      ['rental car', 'ˋrɛntl̩ ˏkɑr', 'n.', '租用的車；租車', 'return the rental car', 1, [], [
+        ['We picked up our [rental car] at the airport.', '我們在機場取了租來的車。'],
+        ['The [rental car] must be returned with a full tank.', '租的車必須加滿油歸還。'],
+      ]],
+      ['layover', 'ˋleˏovɚ', 'n.', '轉機停留', 'a three-hour layover', 3, [], [
+        ['We have a three-hour [layover] in Singapore.', '我們在新加坡要轉機停留三個小時。'],
+        ['I bought a coffee during my [layover] in Hong Kong.', '我在香港轉機的空檔買了一杯咖啡。'],
+      ]],
+      ['connecting flight', 'kəˋnɛktɪŋ ˏflaɪt', 'n.', '轉機航班', 'catch a connecting flight', 2, [], [
+        ['Our first flight was late, so we missed the [connecting flight].', '我們的第一段班機誤點，所以錯過了轉機航班。'],
+        ['The [connecting flight] to Brisbane leaves from Gate 12.', '飛往布里斯本的轉機航班在 12 號登機門出發。'],
+      ]],
+      ['frequent flyer', 'ˋfrikwənt ˋflaɪɚ', 'n.', '飛行常客', 'frequent flyer program', 2, [], [
+        ['As a [frequent flyer], she earns a lot of free miles.', '身為飛行常客，她累積了很多免費里程。'],
+        ['Join our [frequent flyer] program to earn points on every trip.', '加入我們的飛行常客計畫，每次搭乘都能累積點數。'],
+      ]],
+      ['overseas', 'ˋovɚˋsiz', 'adj./adv.', '海外的；在海外', 'overseas branch', 1, ['oversee', 'overseer'], [
+        ['Our company has three [overseas] offices.', '我們公司有三個海外辦事處。'],
+        ['She is planning to work [overseas] next year.', '她打算明年到海外工作。'],
+      ]],
+      ['abroad', 'əˋbrɔd', 'adv.', '在國外；到國外', 'study abroad', 1, [], [
+        ['Many students want to study [abroad] after college.', '很多學生大學畢業後想出國留學。'],
+        ['Do you often travel [abroad] for work?', '你常常因為工作出國嗎？'],
+      ]],
+      ['jet lag', 'dʒɛt læg', 'n.', '時差（不適）', 'get over jet lag', 1, [], [
+        ['I always have bad [jet lag] after flying to Europe.', '我每次飛到歐洲都時差很嚴重。'],
+        ['It took me three days to get over my [jet lag].', '我花了三天才調好時差。'],
+      ]],
+      ['travel agency', 'ˋtrævl̩ ˋedʒənsɪ', 'n.', '旅行社', 'book through a travel agency', 1, [], [
+        ['We booked the whole trip through a [travel agency].', '我們整趟旅程都是透過旅行社訂的。'],
+        ['The [travel agency] arranged our hotel and flights.', '旅行社幫我們安排了飯店和機票。'],
+      ]],
+      ['economy class', 'ɪˋkɑnəmɪ ˏklæs', 'n.', '經濟艙', 'fly economy class', 1, [], [
+        ['Staff must fly [economy class] on short trips.', '短程出差的員工必須搭經濟艙。'],
+        ['The seats in [economy class] are a bit narrow.', '經濟艙的座位有點窄。'],
+      ]],
+      ['carry-on', 'ˋkærɪˏɑn', 'n.', '隨身行李', 'carry-on bag', 2, [], [
+        ['You can bring one [carry-on] and one small personal item.', '你可以帶一件隨身行李和一件小型個人物品。'],
+        ['Please put your [carry-on] in the overhead bin.', '請把隨身行李放進上方的置物櫃。'],
+      ]],
+      ['baggage claim', 'ˋbægɪdʒ ˏklem', 'n.', '行李提領處', 'baggage claim area', 2, [], [
+        ["I'll meet you at [baggage claim] after we land.", '降落後我們在行李提領處碰面。'],
+        ['Our suitcases took forever to arrive at [baggage claim].', '我們的行李箱過了好久才送到行李提領處。'],
+      ]],
+      ['overnight', 'ˋovɚˋnaɪt', 'adj./adv.', '過夜的；一夜之間', 'stay overnight', 2, [], [
+        ['The meeting ran late, so we stayed [overnight] in Osaka.', '會議拖得很晚，所以我們在大阪過夜。'],
+        ['The price includes one [overnight] stay at the hotel.', '這個價格包含飯店住宿一晚。'],
+      ]],
+      ['time zone', 'taɪm zon', 'n.', '時區', 'a different time zone', 1, [], [
+        ['Sydney is in a different [time zone] from Perth.', '雪梨和伯斯在不同的時區。'],
+        ['Remember to check the [time zone] before you set up the call.', '安排通話前記得先確認時區。'],
+      ]],
+      ['check in', 'tʃɛk ɪn', 'v.', '辦理入住；報到', 'check in at the front desk', 1, [], [
+        ['You can [check in] at the hotel after 2 p.m.', '你可以在下午兩點後辦理飯店入住。'],
+        ['Please [check in] at the counter two hours before your flight.', '請在班機起飛前兩小時到櫃檯報到。'],
+      ]],
+      ['transportation', 'ˏtrænspɚˋteʃən', 'n.', '交通運輸；交通工具', 'public transportation', 1, ['transportable', 'transported'], [
+        ['Most employees use public [transportation] to get to work.', '大部分員工搭大眾運輸上班。'],
+        ['The company will pay for your [transportation] from the airport.', '公司會支付你從機場出發的交通費。'],
+      ]],
+      ['suite', 'swit', 'n.', '套房', 'a hotel suite', 2, ['suit', 'sweet'], [
+        ['The [suite] has a living room and two bedrooms.', '這間套房有一個客廳和兩間臥室。'],
+        ['We upgraded the client to a [suite] with an ocean view.', '我們幫客戶升級到海景套房。'],
+      ]],
+      ['fully booked', 'ˋfʊlɪ bʊkt', 'adj.', '客滿的；預訂一空', 'be fully booked', 2, [], [
+        ['Sorry, the hotel is [fully booked] that weekend.', '抱歉，那個週末飯店已經客滿了。'],
+        ['All the flights to Melbourne were [fully booked].', '飛往墨爾本的班機全都訂滿了。'],
+      ]],
+      ['in advance', 'ɪn ədˋvæns', 'adv.', '事先；提前', 'book in advance', 1, [], [
+        ['Please book your flight at least two weeks [in advance].', '請至少提前兩週訂機票。'],
+        ['Thanks [in advance] for your help.', '先謝謝你的幫忙。'],
+      ]],
+      ['on time', 'ɑn taɪm', 'adv.', '準時', 'arrive on time', 1, [], [
+        ['The flight left [on time] despite the rain.', '雖然下雨，班機還是準時起飛。'],
+        ['Please make sure you hand in the report [on time].', '請務必準時交報告。'],
+      ]],
+      ['domestic', 'dəˋmɛstɪk', 'adj.', '國內的；家庭的', 'domestic flights', 2, ['domesticate', 'domestically'], [
+        ['The [domestic] terminal is a short walk from the international one.', '國內線航廈離國際線航廈只要走一小段路。'],
+        ['[Domestic] sales rose by 5 percent this quarter.', '這一季的國內銷售成長了百分之五。'],
+      ]],
+      ['international', 'ˏɪntɚˋnæʃənl̩', 'adj.', '國際的', 'international conference', 1, ['internationally', 'internationalize'], [
+        ['She will speak at an [international] conference in Singapore.', '她將在新加坡的一場國際會議上演講。'],
+        ['Please arrive three hours early for [international] flights.', '搭國際航班請提早三小時抵達。'],
+      ]],
+    ],
+  },
+  {
+    id: 'management', track: 'toeic', name: '管理與策略', icon: '🏢', words: [
+      ['management', 'ˋmænɪdʒmənt', 'n.', '管理；管理階層', 'senior management', 1, ['manage', 'manageable', 'managerial'], [
+        ['The decision was made by senior [management].', '這個決定是由高層主管做出的。'],
+        ['Good time [management] helps you finish projects on schedule.', '良好的時間管理能幫你如期完成專案。'],
+      ]],
+      ['executive', 'ɪgˋzɛkjʊtɪv', 'n./adj.', '主管；高階主管的', 'chief executive officer', 2, ['execute', 'execution'], [
+        ['She was promoted to a senior [executive] position.', '她被升為高階主管職位。'],
+        ['An [executive] from head office will visit us on Monday.', '總公司的一位主管星期一會來拜訪我們。'],
+      ]],
+      ['board of directors', 'bord əv dəˋrɛktɚz', 'n.', '董事會', 'report to the board of directors', 2, [], [
+        ['The [board of directors] approved the new budget.', '董事會核准了新預算。'],
+        ['She was invited to join the [board of directors].', '她受邀加入董事會。'],
+      ]],
+      ['chairperson', 'ˋtʃɛrˏpɝsn̩', 'n.', '主席；董事長', 'committee chairperson', 2, [], [
+        ['The [chairperson] opened the meeting at 9 a.m.', '主席在早上九點宣布會議開始。'],
+        ['She was elected [chairperson] of the committee.', '她被選為委員會主席。'],
+      ]],
+      ['merger', 'ˋmɝdʒɚ', 'n.', '合併', 'a merger between two companies', 3, ['merge', 'merged'], [
+        ['The proposed [merger] still needs government approval.', '這項合併提案仍需要政府核准。'],
+        ['Hundreds of jobs were cut after the [merger] was announced.', '合併案宣布後，有數百個職位被裁撤。'],
+      ]],
+      ['acquisition', 'ˏækwəˋzɪʃən', 'n.', '收購；取得', 'mergers and acquisitions', 3, ['acquire', 'acquired'], [
+        ['The [acquisition] of the startup cost $50 million.', '收購這家新創公司花了五千萬美元。'],
+        ['The company announced its latest [acquisition] on Monday.', '公司在星期一宣布了最新的收購案。'],
+      ]],
+      ['subsidiary', 'səbˋsɪdɪˏɛrɪ', 'n.', '子公司', 'a wholly owned subsidiary', 3, ['subsidy', 'subsidize'], [
+        ['The firm opened a [subsidiary] in Vietnam last year.', '這家公司去年在越南成立了子公司。'],
+        ['Our Australian [subsidiary] handles all sales in the region.', '我們的澳洲子公司負責該地區所有的銷售。'],
+      ]],
+      ['stakeholder', 'ˋstekˏholdɚ', 'n.', '利害關係人', 'key stakeholders', 3, [], [
+        ['Every [stakeholder] was invited to give feedback on the plan.', '每一位利害關係人都受邀對計畫提供意見。'],
+        ['The manager met with each [stakeholder] before the project started.', '專案開始前，經理和每位利害關係人都見了面。'],
+      ]],
+      ['shareholder', 'ˋʃɛrˏholdɚ', 'n.', '股東', 'shareholder meeting', 2, [], [
+        ['Each [shareholder] will receive a copy of the annual report.', '每位股東都會收到一份年報。'],
+        ['The [shareholder] meeting will be held in May.', '股東大會將在五月舉行。'],
+      ]],
+      ['restructure', 'riˋstrʌktʃɚ', 'v.', '重組；改組', 'restructure the company', 3, ['restructuring', 'restructured'], [
+        ['The company plans to [restructure] its sales department.', '公司計畫重組業務部門。'],
+        ['We had to [restructure] the loan to lower our monthly payments.', '我們必須重新調整貸款，降低每月還款金額。'],
+      ]],
+      ['oversee', 'ˋovɚˋsi', 'v.', '監督；管理', 'oversee a project', 2, ['overseas', 'overseer'], [
+        ['Ms. Lee will [oversee] the opening of the new branch.', '李小姐將負責督導新分店的開幕。'],
+        ['Who is going to [oversee] the training program?', '誰要負責監督訓練計畫？'],
+      ]],
+      ['delegate', 'ˋdɛləˏget', 'v.', '委派；授權', 'delegate tasks', 2, ['delegation', 'delegated'], [
+        ['A good manager knows how to [delegate] tasks.', '好的主管懂得如何分派工作。'],
+        ['You should [delegate] some of your work to your assistant.', '你應該把一些工作交給你的助理。'],
+      ]],
+      ['implement', 'ˋɪmpləˏmɛnt', 'v.', '實施；執行', 'implement a plan', 2, ['implementation', 'implemented'], [
+        ['The new policy will be easy to [implement].', '新政策執行起來會很容易。'],
+        ['We plan to [implement] the new software next month.', '我們打算下個月導入新軟體。'],
+      ]],
+      ['initiative', 'ɪˋnɪʃətɪv', 'n.', '計畫；主動性', 'take the initiative', 3, ['initiate', 'initial'], [
+        ['The city launched a new [initiative] to reduce traffic.', '市政府推出了一項減少交通量的新計畫。'],
+        ['She showed great [initiative] by solving the problem herself.', '她自己解決了問題，展現出很強的主動性。'],
+      ]],
+      ['milestone', 'ˋmaɪlˏston', 'n.', '里程碑', 'reach a milestone', 2, [], [
+        ['Launching the app was a major [milestone] for our team.', '推出這個 App 是我們團隊的重要里程碑。'],
+        ['Our store reached a big [milestone] this year: one million customers.', '我們的店今年達到一個重要里程碑：一百萬名顧客。'],
+      ]],
+      ['outcome', 'ˋaʊtˏkʌm', 'n.', '結果', 'the outcome of', 2, [], [
+        ['We are still waiting for the [outcome] of the negotiations.', '我們還在等談判的結果。'],
+        ['Everyone was happy with the [outcome] of the game.', '大家都對比賽結果很滿意。'],
+      ]],
+      ['assess', 'əˋsɛs', 'v.', '評估', 'assess performance', 2, ['assessment', 'assessor'], [
+        ["Managers [assess] each employee's performance twice a year.", '主管每年評估每位員工的表現兩次。'],
+        ['An expert came to [assess] the damage after the storm.', '暴風雨過後，一位專家來評估損害。'],
+      ]],
+      ['coordinate', 'koˋɔrdn̩ˏet', 'v.', '協調', 'coordinate with', 2, ['coordination', 'coordinator'], [
+        ['Kevin will [coordinate] the schedule for the sales conference.', 'Kevin 會負責協調業務會議的行程。'],
+        ['We need someone to [coordinate] with the overseas team.', '我們需要有人和海外團隊協調。'],
+      ]],
+      ['productivity', 'ˏprodʌkˋtɪvətɪ', 'n.', '生產力', 'improve productivity', 2, ['productive', 'productively'], [
+        ['The new software has improved our [productivity].', '新軟體提升了我們的生產力。'],
+        ['Taking short breaks can increase [productivity].', '適時短暫休息可以提高生產力。'],
+      ]],
+      ['morale', 'məˋræl', 'n.', '士氣', 'boost morale', 3, ['moral', 'morally'], [
+        ['The team-building trip really boosted [morale].', '這次團隊建立旅遊大大提振了士氣。'],
+        ['Staff [morale] has been low since the layoffs.', '裁員之後員工士氣一直很低落。'],
+      ]],
+      ['leadership', 'ˋlidɚʃɪp', 'n.', '領導（力）；領導階層', 'leadership skills', 1, ['leader', 'leading'], [
+        ['She showed strong [leadership] during the crisis.', '她在危機中展現了強大的領導力。'],
+        ['The company is now under new [leadership].', '公司現在由新的領導階層掌管。'],
+      ]],
+      ['mission statement', 'ˋmɪʃən ˋstetmənt', 'n.', '使命宣言', 'company mission statement', 3, [], [
+        ['Our [mission statement] is printed on the wall of the lobby.', '我們的使命宣言印在大廳的牆上。'],
+        ['The CEO asked us to help rewrite the [mission statement].', '執行長請我們協助改寫使命宣言。'],
+      ]],
+      ['division', 'dəˋvɪʒən', 'n.', '部門；分部', 'sales division', 2, ['divided', 'divisive'], [
+        ['He was transferred to the marketing [division].', '他被調到行銷部門。'],
+        ['Each [division] has its own budget.', '每個部門都有自己的預算。'],
+      ]],
+      ['streamline', 'ˋstrimˏlaɪn', 'v.', '簡化（流程）；使更有效率', 'streamline the process', 3, ['streamlined', 'streamlining'], [
+        ['We want to [streamline] the ordering process.', '我們想簡化訂購流程。'],
+        ['New software can help [streamline] our daily tasks.', '新軟體可以幫助簡化我們的日常工作。'],
+      ]],
+      ['benchmark', 'ˋbɛntʃˏmɑrk', 'n.', '基準；標竿', 'set a benchmark', 3, [], [
+        ["Last year's sales will be used as a [benchmark].", '去年的業績會被當作基準。'],
+        ['The new phone sets a high [benchmark] for battery life.', '這支新手機在電池續航力上立下了很高的標竿。'],
+      ]],
+    ],
+  },
+  {
+    id: 'adverbs', track: 'toeic', name: 'Part 5 高頻副詞', icon: '⚡', words: [
+      ['approximately', 'əˋprɑksəmɪtlɪ', 'adv.', '大約', 'approximately 30 minutes', 2, ['approximate', 'approximation'], [
+        ['The flight takes [approximately] three hours.', '這班飛機大約要飛三個小時。'],
+        ['[Approximately] 200 people attended the product launch.', '大約有 200 人參加了產品發表會。'],
+      ]],
+      ['immediately', 'ɪˋmidɪɪtlɪ', 'adv.', '立刻', 'take effect immediately', 1, ['immediate', 'immediacy'], [
+        ['Please report any safety problems to your supervisor [immediately].', '任何安全問題請立刻向你的主管回報。'],
+        ['The new parking policy takes effect [immediately].', '新的停車規定即刻生效。'],
+      ]],
+      ['previously', 'ˋprivɪəslɪ', 'adv.', '先前', 'as previously mentioned', 2, ['previous', 'preview'], [
+        ['Ms. Lee [previously] worked as a sales manager in Tokyo.', '李小姐先前在東京擔任業務經理。'],
+        ['The meeting was [previously] scheduled for Monday.', '這場會議原本排在星期一。'],
+      ]],
+      ['recently', 'ˋrisn̩tlɪ', 'adv.', '最近', 'recently opened', 1, ['recent', 'recency'], [
+        ['The company [recently] opened a new branch in Kaohsiung.', '這家公司最近在高雄開了一間新分店。'],
+        ['We have [recently] updated our privacy policy.', '我們最近更新了隱私權政策。'],
+      ]],
+      ['frequently', 'ˋfrikwəntlɪ', 'adv.', '經常', 'frequently asked questions', 2, ['frequent', 'frequency'], [
+        ['The printer on the third floor [frequently] breaks down.', '三樓的印表機經常故障。'],
+        ['Our sales representatives travel [frequently] to Singapore.', '我們的業務代表經常到新加坡出差。'],
+      ]],
+      ['consequently', 'ˋkɑnsəkwɛntlɪ', 'adv.', '因此', 'and consequently', 3, ['consequent', 'consequence'], [
+        ['The supplier raised its prices. [Consequently], we had to find a new one.', '供應商漲價了，因此我們必須另找一家。'],
+        ['The highway was closed and, [consequently], several employees arrived late.', '高速公路封閉，因此有好幾位員工遲到。'],
+      ]],
+      ['therefore', 'ˋðɛrˏfor', 'adv.', '因此', 'and therefore', 2, [], [
+        ['The office will be closed on Monday. [Therefore], all meetings will be moved to Tuesday.', '辦公室星期一不開放，因此所有會議都改到星期二。'],
+        ['Our costs have increased, and we must [therefore] raise our prices.', '我們的成本增加了，因此必須調漲價格。'],
+      ]],
+      ['however', 'haʊˋɛvɚ', 'adv.', '然而', 'however, ...', 1, [], [
+        ['The new system is faster. [However], it is harder to use.', '新系統比較快，然而比較難用。'],
+        ['The hotel is expensive; [however], it is very close to the airport.', '這家飯店很貴，不過離機場很近。'],
+      ]],
+      ['nevertheless', 'ˏnɛvɚðəˋlɛs', 'adv.', '儘管如此', 'but nevertheless', 3, [], [
+        ['Sales were slow in January. [Nevertheless], the company met its annual target.', '一月的銷售很慢，儘管如此，公司還是達成了年度目標。'],
+        ['The task was difficult; [nevertheless], the team finished it on time.', '這項任務很困難，儘管如此，團隊還是準時完成了。'],
+      ]],
+      ['furthermore', 'ˋfɝðɚˏmor', 'adv.', '此外', 'furthermore, ...', 3, [], [
+        ['The new office is larger. [Furthermore], it is closer to the train station.', '新辦公室比較大，此外離火車站也比較近。'],
+        ['The software is easy to use. [Furthermore], it is free for small businesses.', '這套軟體很好用，此外小型企業可以免費使用。'],
+      ]],
+      ['moreover', 'morˋovɚ', 'adv.', '而且', 'moreover, ...', 3, [], [
+        ['The plan is too expensive. [Moreover], it would take two years to complete.', '這個計畫太貴了，而且要兩年才能完成。'],
+        ['Ms. Ito has strong sales skills; [moreover], she speaks three languages.', '伊藤小姐的銷售能力很強，而且會說三種語言。'],
+      ]],
+      ['otherwise', 'ˋʌðɚˏwaɪz', 'adv.', '否則', 'unless otherwise stated', 2, [], [
+        ['Please submit your report by Friday; [otherwise], it will not be reviewed.', '請在星期五前交報告，否則不會被審閱。'],
+        ['Save your work often. [Otherwise], you may lose important data.', '要經常存檔，否則你可能會遺失重要資料。'],
+      ]],
+      ['accordingly', 'əˋkɔrdɪŋlɪ', 'adv.', '相應地；因此', 'act accordingly', 3, ['accord', 'accordance'], [
+        ['Fuel prices have risen, so we have adjusted our budget [accordingly].', '油價上漲了，所以我們相應地調整了預算。'],
+        ['Please read the safety instructions and act [accordingly].', '請閱讀安全須知並照著做。'],
+      ]],
+      ['significantly', 'sɪgˋnɪfəkəntlɪ', 'adv.', '顯著地', 'increase significantly', 2, ['significant', 'significance', 'signify'], [
+        ['Sales have increased [significantly] since the advertising campaign.', '廣告活動之後，銷售量顯著增加。'],
+        ['The new software [significantly] reduces processing time.', '新軟體大幅縮短了處理時間。'],
+      ]],
+      ['gradually', 'ˋgrædʒʊəlɪ', 'adv.', '逐漸地', 'gradually increase', 2, ['gradual', 'graduate'], [
+        ['Prices are expected to rise [gradually] over the next year.', '預計價格在明年會逐漸上漲。'],
+        ['The company [gradually] expanded into overseas markets.', '這家公司逐步拓展到海外市場。'],
+      ]],
+      ['temporarily', 'ˏtɛmpəˋrɛrəlɪ', 'adv.', '暫時地', 'temporarily closed', 2, ['temporary', 'temper'], [
+        ['The elevator is [temporarily] out of service.', '電梯暫時停止使用。'],
+        ['The website will be [temporarily] unavailable during maintenance.', '網站在維修期間會暫時無法使用。'],
+      ]],
+      ['regularly', 'ˋrɛgjəlɚlɪ', 'adv.', '定期地', 'regularly scheduled', 1, ['regular', 'regulate', 'regularity'], [
+        ['Employees are asked to change their passwords [regularly].', '員工被要求定期更改密碼。'],
+        ['The equipment is [regularly] inspected by our technicians.', '這些設備由我們的技術人員定期檢查。'],
+      ]],
+      ['promptly', 'ˋprɑmptlɪ', 'adv.', '迅速地；準時地', 'respond promptly', 2, ['prompt', 'promptness'], [
+        ["Ms. Chen [promptly] responded to the customer's complaint.", '陳小姐迅速回覆了顧客的投訴。'],
+        ['Our team [promptly] replaced the damaged items.', '我們的團隊很快就更換了損壞的商品。'],
+      ]],
+      ['primarily', 'praɪˋmɛrəlɪ', 'adv.', '主要地', 'primarily responsible for', 3, ['primary', 'prime'], [
+        ['This laptop is designed [primarily] for students.', '這台筆電主要是為學生設計的。'],
+        ['The delay was caused [primarily] by bad weather.', '延誤主要是天候不佳造成的。'],
+      ]],
+      ['relatively', 'ˋrɛlətɪvlɪ', 'adv.', '相對地', 'relatively low', 2, ['relative', 'relation', 'relate'], [
+        ['The new model is [relatively] inexpensive.', '新機型相對便宜。'],
+        ['Office rents in this area are [relatively] low.', '這一區的辦公室租金相對較低。'],
+      ]],
+      ['eventually', 'ɪˋvɛntʃʊəlɪ', 'adv.', '最終', 'eventually lead to', 2, ['eventual', 'event'], [
+        ['The two companies [eventually] reached an agreement.', '兩家公司最後達成了協議。'],
+        ['After several delays, the project was [eventually] completed in May.', '經過幾次延誤，這個專案最終在五月完成。'],
+      ]],
+      ['especially', 'əˋspɛʃəlɪ', 'adv.', '特別是', 'especially popular', 1, ['special', 'specialty'], [
+        ['This area is [especially] popular with tourists.', '這一區特別受觀光客歡迎。'],
+        ['Sales were strong this year, [especially] in Asia.', '今年的銷售很好，特別是在亞洲。'],
+      ]],
+      ['unfortunately', 'ʌnˋfɔrtʃənɪtlɪ', 'adv.', '不幸地', 'unfortunately, ...', 1, ['unfortunate', 'fortune'], [
+        ['[Unfortunately], your flight has been canceled.', '很遺憾，您的班機已經取消了。'],
+        ["The CEO is [unfortunately] unable to attend today's meeting.", '很可惜，執行長無法出席今天的會議。'],
+      ]],
+      ['separately', 'ˋsɛpərɪtlɪ', 'adv.', '分開地', 'sold separately', 2, ['separate', 'separation'], [
+        ['Meals are not included and must be paid for [separately].', '餐點不包含在內，必須另外付費。'],
+        ['The two candidates were interviewed [separately].', '兩位應徵者分別接受面試。'],
+      ]],
+      ['shortly', 'ˋʃɔrtlɪ', 'adv.', '不久；很快', 'shortly after', 2, ['short', 'shorten', 'shortage'], [
+        ['The meeting will begin [shortly].', '會議很快就要開始了。'],
+        ['[Shortly] after the merger was announced, the CEO resigned.', '合併案宣布後不久，執行長就辭職了。'],
+      ]],
+    ],
+  },
+  {
+    id: 'adjectives', track: 'toeic', name: 'Part 5 高頻形容詞', icon: '✨', words: [
+      ['mandatory', 'ˋmændəˏtorɪ', 'adj.', '強制的', 'mandatory training', 3, ['mandate', 'demand'], [
+        ['Attendance at the safety training is [mandatory] for all staff.', '所有員工都必須參加安全訓練。'],
+        ['Wearing a helmet is [mandatory] on the construction site.', '在工地一定要戴安全帽。'],
+      ]],
+      ['eligible', 'ˋɛlɪdʒəbl̩', 'adj.', '有資格的', 'eligible for a bonus', 3, ['eligibility', 'elect'], [
+        ['Full-time employees are [eligible] for the annual bonus.', '正職員工有資格領年終獎金。'],
+        ['Customers who spend over $100 are [eligible] for free shipping.', '消費滿 100 美元的顧客可享免運費。'],
+      ]],
+      ['tentative', 'ˋtɛntətɪv', 'adj.', '暫定的', 'tentative schedule', 3, ['tentatively', 'attentive'], [
+        ['We have reached a [tentative] agreement with the supplier.', '我們和供應商達成了初步協議。'],
+        ['The [tentative] schedule will be confirmed next week.', '暫定的時程下週會確認。'],
+      ]],
+      ['preliminary', 'prɪˋlɪməˏnɛrɪ', 'adj.', '初步的', 'preliminary results', 3, ['preliminarily', 'preliminaries'], [
+        ['The [preliminary] results of the survey look promising.', '問卷的初步結果看起來很有希望。'],
+        ['We will hold a [preliminary] meeting with the client on Thursday.', '我們星期四會和客戶開一場初步會議。'],
+      ]],
+      ['comprehensive', 'ˏkɑmprɪˋhɛnsɪv', 'adj.', '全面的', 'comprehensive review', 3, ['comprehend', 'comprehension', 'comprehensively'], [
+        ['The new employee handbook is very [comprehensive].', '新的員工手冊內容非常完整。'],
+        ['We offer a [comprehensive] insurance plan for all employees.', '我們為所有員工提供全方位的保險方案。'],
+      ]],
+      ['considerable', 'kənˋsɪdərəbl̩', 'adj.', '相當大的', 'a considerable amount of', 2, ['consider', 'considerably', 'consideration'], [
+        ['The project required a [considerable] amount of time.', '這個專案花了相當多的時間。'],
+        ['There has been [considerable] interest in our new product.', '我們的新產品受到相當大的關注。'],
+      ]],
+      ['substantial', 'səbˋstænʃəl', 'adj.', '大量的；可觀的', 'a substantial increase', 3, ['substance', 'substantially', 'substantiate'], [
+        ['The company made a [substantial] profit last year.', '這家公司去年獲利可觀。'],
+        ['Employees received a [substantial] increase in salary.', '員工獲得了大幅加薪。'],
+      ]],
+      ['reliable', 'rɪˋlaɪəbl̩', 'adj.', '可靠的', 'a reliable supplier', 2, ['rely', 'reliably', 'reliability'], [
+        ['We are looking for a [reliable] supplier of packaging materials.', '我們正在尋找可靠的包裝材料供應商。'],
+        ['The new delivery service is fast and [reliable].', '新的配送服務又快又可靠。'],
+      ]],
+      ['flexible', 'ˋflɛksəbl̩', 'adj.', '有彈性的', 'flexible working hours', 2, ['flexibility', 'flexibly'], [
+        ['The company offers [flexible] working hours.', '這家公司提供彈性工時。'],
+        ['Our payment terms are quite [flexible].', '我們的付款條件相當有彈性。'],
+      ]],
+      ['adequate', 'ˋædəkwɪt', 'adj.', '足夠的；適當的', 'adequate space', 3, ['adequately', 'adequacy'], [
+        ['The room does not have [adequate] space for 50 people.', '這個房間沒有足夠的空間容納 50 人。'],
+        ['Make sure there is [adequate] lighting in the warehouse.', '確保倉庫裡有足夠的照明。'],
+      ]],
+      ['accurate', 'ˋækjərɪt', 'adj.', '準確的', 'accurate information', 2, ['accurately', 'accuracy'], [
+        ['Please make sure all the figures in the report are [accurate].', '請確認報告中的所有數字都正確。'],
+        ['We need [accurate] information about our customers.', '我們需要關於顧客的準確資訊。'],
+      ]],
+      ['essential', 'ɪˋsɛnʃəl', 'adj.', '必要的', 'essential for', 2, ['essence', 'essentially'], [
+        ['Good communication skills are [essential] for this position.', '良好的溝通能力是這個職位必備的。'],
+        ['Please pack only [essential] items for the business trip.', '出差請只帶必需品。'],
+      ]],
+      ['sufficient', 'səˋfɪʃənt', 'adj.', '足夠的', 'sufficient funds', 2, ['suffice', 'sufficiently', 'sufficiency'], [
+        ['We do not have [sufficient] funds to complete the project.', '我們沒有足夠的資金完成這個專案。'],
+        ["Two days' notice is [sufficient] for most requests.", '大部分的申請提前兩天通知就夠了。'],
+      ]],
+      ['optional', 'ˋɑpʃənl̩', 'adj.', '選擇性的', 'optional tour', 2, ['option', 'optionally'], [
+        ['Attendance at the company dinner is [optional].', '公司聚餐可自由參加。'],
+        ['The tour includes an [optional] visit to the museum.', '這個行程包含自由參加的博物館參觀。'],
+      ]],
+      ['numerous', 'ˋnjumərəs', 'adj.', '許多的', 'numerous complaints', 2, ['number', 'numeral'], [
+        ['The hotel has received [numerous] complaints about the noise.', '這家飯店收到許多關於噪音的投訴。'],
+        ['[Numerous] companies took part in the trade fair.', '許多公司參加了這次商展。'],
+      ]],
+      ['various', 'ˋvɛrɪəs', 'adj.', '各式各樣的', 'various kinds of', 1, ['vary', 'variety', 'variously'], [
+        ['The store sells [various] kinds of office supplies.', '這家店販售各式各樣的辦公用品。'],
+        ['We discussed [various] options at the meeting.', '我們在會議上討論了各種方案。'],
+      ]],
+      ['upcoming', 'ˋʌpˏkʌmɪŋ', 'adj.', '即將到來的', 'upcoming event', 2, [], [
+        ['Please register for the [upcoming] conference by Friday.', '請在星期五前報名即將舉行的研討會。'],
+        ['The manager will discuss the [upcoming] changes at the meeting.', '經理會在會議上說明即將到來的變動。'],
+      ]],
+      ['outstanding', 'ˏaʊtˋstændɪŋ', 'adj.', '傑出的；未付的', 'outstanding balance', 3, [], [
+        ['Mr. Brown received an award for his [outstanding] performance.', '布朗先生因表現傑出而獲獎。'],
+        ['Please pay the [outstanding] balance by the end of the month.', '請在月底前付清未付款項。'],
+      ]],
+      ['prominent', 'ˋprɑmənənt', 'adj.', '著名的；顯眼的', 'a prominent figure', 3, ['prominence', 'prominently'], [
+        ['She is a [prominent] figure in the fashion industry.', '她是時尚界的知名人物。'],
+        ['The company logo should appear in a [prominent] position.', '公司標誌應該放在顯眼的位置。'],
+      ]],
+      ['innovative', 'ˋɪnəˏvetɪv', 'adj.', '創新的', 'innovative design', 2, ['innovate', 'innovation', 'innovatively'], [
+        ["Ms. Park's design for the new store is highly [innovative].", '朴小姐的新店設計非常有創意。'],
+        ['The judges found the marketing plan very [innovative].', '評審認為這份行銷企劃非常創新。'],
+      ]],
+      ['exclusive', 'ɪkˋsklusɪv', 'adj.', '獨家的', 'exclusive offer', 2, ['exclude', 'exclusively', 'exclusion'], [
+        ['Members receive [exclusive] discounts on all products.', '會員所有商品都享有專屬折扣。'],
+        ['The magazine published an [exclusive] interview with the CEO.', '這本雜誌刊登了執行長的獨家專訪。'],
+      ]],
+      ['subsequent', 'ˋsʌbsɪkwɛnt', 'adj.', '隨後的', 'subsequent meetings', 3, ['subsequently', 'sequence'], [
+        ['The problem was fixed in [subsequent] versions of the software.', '這個問題在之後的軟體版本中修正了。'],
+        ['The first meeting went well, and [subsequent] meetings were even more productive.', '第一次會議很順利，之後的會議更有成效。'],
+      ]],
+      ['specific', 'spɪˋsɪfɪk', 'adj.', '特定的；具體的', 'specific examples', 2, ['specify', 'specifically', 'specification'], [
+        ['Please give [specific] examples in your report.', '請在報告中舉出具體的例子。'],
+        ['This job requires [specific] technical skills.', '這份工作需要特定的技術能力。'],
+      ]],
+      ['appropriate', 'əˋproprɪɪt', 'adj.', '適當的', 'appropriate action', 2, ['appropriately', 'appropriateness'], [
+        ['Please wear [appropriate] clothing for the interview.', '面試請穿著合宜的服裝。'],
+        ['The manager will take [appropriate] action to solve the problem.', '經理會採取適當的措施解決問題。'],
+      ]],
+      ['initial', 'ɪˋnɪʃəl', 'adj.', '最初的', 'initial cost', 2, ['initially', 'initiate'], [
+        ['The [initial] cost of the equipment was very high.', '這套設備的初期成本非常高。'],
+        ['Our [initial] plan was to open two stores this year.', '我們最初的計畫是今年開兩家店。'],
+      ]],
+    ],
+  },
+  {
+    id: 'phrasal', track: 'toeic', name: '高頻片語', icon: '🔗', words: [
+      ['in accordance with', 'ɪn əˋkɔrdn̩s wɪð', 'prep.', '依照', 'in accordance with the regulations', 3, [], [
+        ['All products are tested [in accordance with] safety regulations.', '所有產品都依照安全規定進行檢測。'],
+        ['Refunds will be issued [in accordance with] our return policy.', '退款將依照我們的退貨政策辦理。'],
+      ]],
+      ['prior to', 'ˋpraɪɚ tə', 'prep.', '在…之前', 'prior to departure', 3, [], [
+        ['Please arrive 15 minutes [prior to] your interview.', '請在面試前 15 分鐘抵達。'],
+        ['All passengers must check in [prior to] departure.', '所有旅客都必須在出發前報到。'],
+      ]],
+      ['on behalf of', 'ɑn bɪˋhæf əv', 'prep.', '代表', 'on behalf of the company', 2, [], [
+        ['I am writing [on behalf of] the marketing department.', '我代表行銷部寫這封信。'],
+        ['Ms. Wang accepted the award [on behalf of] the company.', '王小姐代表公司領獎。'],
+      ]],
+      ['in charge of', 'ɪn tʃɑrdʒ əv', 'prep.', '負責', 'be in charge of', 1, [], [
+        ['Mr. Lin is [in charge of] the new project.', '林先生負責這個新專案。'],
+        ['Who is [in charge of] ordering office supplies?', '誰負責訂購辦公用品？'],
+      ]],
+      ['take over', 'tek ˋovɚ', 'v.', '接管；接手', 'take over as manager', 2, [], [
+        ['Ms. Davis will [take over] as sales director next month.', '戴維斯小姐下個月將接任業務總監。'],
+        ['A larger firm is planning to [take over] the company.', '一家更大的公司正計畫收購這家公司。'],
+      ]],
+      ['carry out', 'ˋkærɪ aʊt', 'v.', '執行', 'carry out an inspection', 2, [], [
+        ['The technicians will [carry out] the inspection on Friday.', '技術人員星期五會進行檢查。'],
+        ['We need more staff to [carry out] the plan.', '我們需要更多人手來執行這項計畫。'],
+      ]],
+      ['set up', 'sɛt ʌp', 'v.', '設立；安裝', 'set up an office', 1, [], [
+        ['We plan to [set up] a new office in Taichung.', '我們計畫在台中設立新辦公室。'],
+        ['Can you help me [set up] the projector?', '你可以幫我架設投影機嗎？'],
+      ]],
+      ['look into', 'lʊk ˋɪntʊ', 'v.', '調查', 'look into the problem', 2, [], [
+        ['Our customer service team will [look into] the problem.', '我們的客服團隊會調查這個問題。'],
+        ['The manager promised to [look into] the billing error.', '經理答應會查明帳單錯誤。'],
+      ]],
+      ['fill out', 'fɪl aʊt', 'v.', '填寫（表格）', 'fill out a form', 1, [], [
+        ['Please [fill out] this form before your appointment.', '請在看診前填寫這份表格。'],
+        ['All applicants must [fill out] an online application.', '所有應徵者都必須填寫線上申請表。'],
+      ]],
+      ['hand in', 'hænd ɪn', 'v.', '繳交', 'hand in a report', 1, [], [
+        ['Please [hand in] your expense reports by Friday.', '請在星期五前繳交費用報告。'],
+        ['Did you [hand in] your timesheet yesterday?', '你昨天交工時表了嗎？'],
+      ]],
+      ['figure out', 'ˋfɪgjɚ aʊt', 'v.', '想出；弄清楚', 'figure out a solution', 1, [], [
+        ['We need to [figure out] why sales are down.', '我們需要弄清楚銷售下滑的原因。'],
+        ["I can't [figure out] how to use the new software.", '我搞不懂新軟體要怎麼用。'],
+      ]],
+      ['run out of', 'rʌn aʊt əv', 'v.', '用完', 'run out of time', 1, [], [
+        ['The printer is about to [run out of] ink.', '印表機的墨水快用完了。'],
+        ['We may [run out of] time before we finish the agenda.', '我們可能還沒討論完議程就沒時間了。'],
+      ]],
+      ['put off', 'pʊt ɔf', 'v.', '延後', 'put off a meeting', 2, [], [
+        ['We need to [put off] the meeting until next week.', '我們得把會議延到下週。'],
+        ["Don't [put off] replying to important emails.", '不要拖延回覆重要的電子郵件。'],
+      ]],
+      ['call off', 'kɔl ɔf', 'v.', '取消', 'call off an event', 2, [], [
+        ['We may have to [call off] the outdoor event because of the rain.', '因為下雨，我們可能得取消戶外活動。'],
+        ['The union decided to [call off] the strike.', '工會決定取消罷工。'],
+      ]],
+      ['turn down', 'tɝn daʊn', 'v.', '拒絕；調低', 'turn down an offer', 2, [], [
+        ['Ms. Lee decided to [turn down] the job offer.', '李小姐決定婉拒這份工作。'],
+        ['Could you [turn down] the air conditioning a little?', '你可以把冷氣調小一點嗎？'],
+      ]],
+      ['deal with', 'dil wɪð', 'v.', '處理', 'deal with complaints', 1, [], [
+        ['Our staff are trained to [deal with] customer complaints.', '我們的員工受過處理顧客投訴的訓練。'],
+        ['I will [deal with] the shipping problem this afternoon.', '我今天下午會處理運送的問題。'],
+      ]],
+      ['in addition to', 'ɪn əˋdɪʃən tə', 'prep.', '除…之外', 'in addition to salary', 2, [], [
+        ['[In addition to] a competitive salary, we offer free lunches.', '除了優渥的薪水，我們還提供免費午餐。'],
+        ['The hotel has a fitness center [in addition to] an outdoor pool.', '這家飯店除了室外游泳池，還有健身中心。'],
+      ]],
+      ['due to', 'dju tə', 'prep.', '由於', 'due to bad weather', 2, [], [
+        ['The flight was delayed [due to] bad weather.', '班機因為天候不佳而延誤。'],
+        ['The store will be closed next week [due to] renovations.', '這家店下週因為整修暫停營業。'],
+      ]],
+      ['regardless of', 'rɪˋgɑrdlɪs əv', 'prep.', '不管；無論', 'regardless of experience', 3, [], [
+        ['All new employees receive the same training [regardless of] experience.', '所有新進員工不論經驗都接受相同的訓練。'],
+        ['The event will take place [regardless of] the weather.', '無論天氣如何，活動都會照常舉行。'],
+      ]],
+      ['in response to', 'ɪn rɪˋspɑns tə', 'prep.', '回應', 'in response to customer feedback', 2, [], [
+        ['[In response to] customer feedback, we have extended our opening hours.', '為了回應顧客意見，我們延長了營業時間。'],
+        ['I am writing [in response to] your job advertisement.', '我寫這封信是要應徵貴公司刊登的職缺。'],
+      ]],
+      ['with regard to', 'wɪð rɪˋgɑrd tə', 'prep.', '關於', 'with regard to your order', 3, [], [
+        ['I am calling [with regard to] your recent order.', '我打電話來是關於您最近的訂單。'],
+        ['Please contact Mr. Ho [with regard to] the budget.', '關於預算的事請聯絡何先生。'],
+      ]],
+      ['as of', 'æz əv', 'prep.', '自…起', 'as of today', 3, [], [
+        ['[As of] July 1, the office will open at 8:30 a.m.', '自 7 月 1 日起，辦公室早上 8 點半開門。'],
+        ['[As of] today, we have received 200 applications.', '截至今天，我們已收到 200 份申請。'],
+      ]],
+      ['according to', 'əˋkɔrdɪŋ tə', 'prep.', '根據', 'according to the report', 1, [], [
+        ['[According to] the report, sales rose by 10 percent.', '根據報告，銷售額成長了百分之十。'],
+        ['The project is going [according to] plan.', '專案正按照計畫進行。'],
+      ]],
+      ['in terms of', 'ɪn tɝmz əv', 'prep.', '就…而言', 'in terms of cost', 2, [], [
+        ['[In terms of] price, this model is the best choice.', '就價格而言，這個型號是最好的選擇。'],
+        ['The new office is much better [in terms of] location.', '就地點而言，新辦公室好多了。'],
+      ]],
+      ['instead of', 'ɪnˋstɛd əv', 'prep.', '而不是', 'instead of driving', 1, [], [
+        ["Let's hold the meeting on Thursday [instead of] Friday.", '我們把會議改在星期四開，不要星期五。'],
+        ['Customers can now pay online [instead of] at the counter.', '顧客現在可以線上付款，不必到櫃台。'],
+      ]],
+    ],
+  },
 ];
 
 window.TOEIC_WORDS = window.TOEIC_CATEGORIES.flatMap(function (cat, catIndex) {
