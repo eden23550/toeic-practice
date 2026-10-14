@@ -1,6 +1,6 @@
 {
   "name": "toeic-practice",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "多益練習 App：單字訓練（出國生活與多益核心）與出國實用句型",
   "scripts": {
