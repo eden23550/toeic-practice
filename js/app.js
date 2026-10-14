@@ -51,7 +51,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.9.1';
+  var APP_VERSION = '1.0.0';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';

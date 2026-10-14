@@ -798,9 +798,9 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.selectOption('#set-mix', '70');
       await page.click('[data-tab="library"]');
       await page.click('[data-cat="track:toeic"]');
-      expect((await text('#lib-list .hint')).includes('共 450 個字'), '多益核心應該有 450 個字：' + await text('#lib-list .hint'));
+      expect((await text('#lib-list .hint')).includes('共 1500 個字'), '多益核心應該有 1500 個字：' + await text('#lib-list .hint'));
       await page.click('[data-cat="track:life"]');
-      expect((await text('#lib-list .hint')).includes('共 150 個字'), '出國生活應該有 150 個字');
+      expect((await text('#lib-list .hint')).includes('共 500 個字'), '出國生活應該有 500 個字');
       await page.click('[data-cat="all"]');
     });
 
