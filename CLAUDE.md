@@ -6,7 +6,7 @@
 
 ## 檔案
 
-- `js/words.js`：單字庫（24 個分類 × 25 字＝600 字），每個分類屬於一條路線：`life` 出國生活（6 類）、`toeic` 多益核心（18 類）
+- `js/words.js`：單字庫（80 個分類 × 25 字＝2000 字），每個分類屬於一條路線：`life` 出國生活（20 類）、`toeic` 多益核心（60 類）
 - `js/forms.js`：詞性填空干擾選項的詞性與中文（單字庫沒有的字才需要寫）
 - `js/phrases.js`：句型（10 個情境），格式說明在檔案開頭
 - `js/toeic.js`：多益題型題庫（搭配詞 `c:`、Part 5 文法 `g:`、Part 2 聽力應答 `l:`），第一個選項是正確答案
@@ -26,7 +26,7 @@
 - **多益題型**：每個錯誤選項放進句子都必須說不通（文法錯誤或明顯不自然）。像 take a decision、have a break 這種英式或口語也成立的說法不能當錯誤選項。題目文字就是學習紀錄的 id，不要改既有題目。
 - **獎勵制度**（打工度假之旅）存在學習紀錄的 `game` 欄位：經驗值、里程、免死金牌、拿到的明信片（站的 id）、每日任務。站和國家的 id 不要改；新增國家加在 `JOURNEY` 後面，走完前一個國家的使用者會從新國家的第一站出發。經驗值和里程的數字在 `js/app.js` 的 `XP`、`MILES`，改了要同步更新 `docs/requirements.md`。
 - **口說跟讀**和**看字念出來**用 Web Speech API 的 SpeechRecognition，E2E 測試以假的辨識器模擬（唸出畫面上 `.say-target` 或 `.shadow-target` 的文字，或 `window.__said`）；評分函式 `scoreSpeech` 透過 `window.TOEIC_APP` 給測試使用。
-- **KK 音標**：新增單字時用 CMUdict 比對重音（`pip install cmudict` 後執行 `npm run check:kk`）；單音節字不標重音。目前列出的 5 個（round-trip、diagnose、employee、inventory、circulation）是字典常見的另一種念法，可以保留。
+- **KK 音標**：新增單字時用 CMUdict 比對重音（`pip install cmudict` 後執行 `npm run check:kk`）；單音節字不標重音。目前列出的 23 個（round-trip、diagnose、employee、researcher、trainee、GPS 等）是字典常見的另一種念法、字典本身標了兩個主重音，或縮寫逐字母念，可以保留。
 - **新增單字**：先列字表（英文、中文、分類、難度）給使用者確認再寫例句和題目；新分類要設定 `track`。每日新字依設定 `toeicMix`（多益比例）從兩條路線挑。
 - 使用者用 iPhone（從主畫面開啟），朋友用 Android。發音依賴裝置內建的 Web Speech API。
 - **問題回報**走 Google 表單（`REPORT_FORM_URL`，不需登入，回覆在使用者自己的 Google 帳號），用預先填入連結帶入資訊，各題代號在 `REPORT_FIELDS`。表單的題目或「回報類型」選項文字有改動時，要請使用者到表單的「預先填寫表單」重新取得連結，並更新 `REPORT_FIELDS` 和 `tests/e2e.js` 的 `FORM_FIELDS`。打開表單要用 `<a>` 連結，不要用 `window.open`，iPhone 會擋。
