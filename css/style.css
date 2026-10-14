@@ -690,3 +690,7 @@ button.stop-btn { cursor: pointer; }
 /* 兩條路線 */
 .chip-label { align-self: center; font-size: 0.8rem; font-weight: 700; color: var(--muted); white-space: nowrap; margin-right: 2px; }
 .track-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 1rem; margin: 12px 0 8px; }
+.option-notes .on-main { flex: 1; }
+.option-notes .kk { font-weight: normal; }
+.option-notes .speak { flex: none; }
+.backup-card { border: 2px solid var(--accent); }

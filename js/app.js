@@ -51,7 +51,7 @@
   }
 
   // 改版時要和 sw.js 的 CACHE 版本號一起更新（npm test 會檢查兩者一致）
-  var APP_VERSION = '0.9.0';
+  var APP_VERSION = '0.9.1';
   var STORE_KEY = 'toeic-practice-v1';
   var ERROR_KEY = 'toeic-practice-errors';   // index.html 開頭的錯誤紀錄寫在這裡
   var ISSUE_URL = 'https://github.com/eden23550/toeic-practice/issues/new/choose';
@@ -126,7 +126,7 @@
   // ---------- 資料儲存 ----------
   function defaultState() {
     return {
-      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto', sayQuiz: true, toeicMix: 70 },
+      settings: { dailyNew: 15, dailyNewPhrases: 5, accent: 'en-US', rate: 0.9, autoSpeak: true, theme: 'auto', sayQuiz: true, toeicMix: 70, lastExport: null, backupSnooze: null },
       words: {},
       daily: {},
       game: defaultGame(),
@@ -1073,7 +1073,7 @@
     var total = due + remainNew;
 
     var h = '<header class="hero"><h1>多益單字練習</h1><p class="sub">為出國溝通打好單字基礎</p></header>';
-    h += journeyCard() + missionsCard();
+    h += journeyCard() + backupCard() + missionsCard();
     h += '<section class="card today">';
     h += '<div class="today-row"><div class="big-num">' + due + '</div><div>個字要複習</div></div>';
     h += '<div class="today-row"><div class="big-num">' + remainNew + '</div><div>個新字</div></div>';
@@ -1525,7 +1525,8 @@
       '<button class="btn primary block" data-action="report-general">回報問題或建議</button>' +
       '<p class="hint">有 GitHub 帳號的話，也可以<a href="' + ISSUE_URL + '" target="_blank" rel="noopener">到 GitHub 回報</a>。</p></section>';
 
-    h += '<section class="card"><h2>資料</h2><p class="hint">練習紀錄只存在這台裝置的瀏覽器，建議定期匯出備份。</p>';
+    h += '<section class="card"><h2>資料</h2><p class="hint">練習紀錄只存在這台裝置的瀏覽器，建議定期匯出備份。' +
+      '<br>上次備份：' + (s.lastExport || '從未備份') + '</p>';
     h += '<div class="btn-row"><button class="btn" data-action="export">匯出紀錄</button>';
     h += '<label class="btn">匯入紀錄<input type="file" id="import-file" accept="application/json,.json" hidden></label></div>';
     h += '<button class="btn danger block" data-action="reset">清除所有紀錄</button></section>';
@@ -1797,29 +1798,32 @@
   // 作答後列出每個選項的意思；答錯時直接展開，答對時收起來
   function optionNotes(q) {
     if (!q || !q.options || isDrill(q.id)) return '';
+    // 每個選項都附上英文的發音按鈕；單字另外附 KK 音標
+    var kkOf = function (w) { return w && w.kk ? ' <span class="kk">[' + esc(w.kk) + ']</span>' : ''; };
     var rows = q.options.map(function (opt) {
-      var main, sub;
+      var main, sub, say;
       if (q.mode === 'fill') {
         var f = formInfo(opt);
         if (!f) return null;
-        main = '<b>' + esc(opt) + '</b> <span class="pos">' + esc(f.pos) + '</span>';
+        main = '<b>' + esc(opt) + '</b>' + kkOf(WORD_BY_WORD[opt]) + ' <span class="pos">' + esc(f.pos) + '</span>';
         sub = esc(f.zh);
+        say = opt;
       } else {
         var src = q.sources && q.sources[opt] ? getItem(q.sources[opt]) : null;
         if (!src) return null;
-        if (q.mode === 'en2zh' || q.mode === 'listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.word) + ' <span class="pos">' + esc(src.pos) + '</span>'; }
-        else if (q.mode === 'zh2en') { main = '<b>' + esc(opt) + '</b> <span class="pos">' + esc(src.pos) + '</span>'; sub = esc(src.zh); }
-        else if (q.mode === 'p_listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.plain); }
-        else { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.zh); }
+        if (q.mode === 'en2zh' || q.mode === 'listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.word) + kkOf(src) + ' <span class="pos">' + esc(src.pos) + '</span>'; say = src.word; }
+        else if (q.mode === 'zh2en') { main = '<b>' + esc(opt) + '</b>' + kkOf(src) + ' <span class="pos">' + esc(src.pos) + '</span>'; sub = esc(src.zh); say = src.word; }
+        else if (q.mode === 'p_listen') { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.plain); say = src.plain; }
+        else { main = '<b>' + esc(opt) + '</b>'; sub = esc(src.zh); say = src.plain; }
       }
       var cls = opt === q.answer ? 'right' : opt === session.picked ? 'wrong' : '';
       return '<li class="' + cls + '"><span class="on-mark">' + (opt === q.answer ? '✓' : opt === session.picked ? '✗' : '·') + '</span>' +
-        '<span class="on-main"><span>' + main + '</span><span class="on-sub">' + sub + '</span></span></li>';
+        '<span class="on-main"><span>' + main + '</span><span class="on-sub">' + sub + '</span></span>' + speakBtn(say) + '</li>';
     });
     if (rows.some(function (r) { return !r; })) return '';
     var list = '<ul class="option-notes">' + rows.join('') + '</ul>';
     var title = q.mode === 'fill' ? '每個選項的詞性和意思' : '每個選項的意思';
-    return '<details class="notes-box"' + (session.lastResult === 'correct' ? '' : ' open') + '><summary>📖 ' + title + '</summary>' + list + '</details>';
+    return '<details class="notes-box" open><summary>📖 ' + title + '</summary>' + list + '</details>';
   }
 
   function feedback(w) {
@@ -2167,11 +2171,12 @@
         st.listening = false;
         st.rec = null;
         if (error) { st.error = error; renderSession(); return; }
+        // 前兩次可能是距離、環境音影響，3 次內念對都算對；3 次都沒念對才算錯
         if (passed) {
           st.passedOn = st.tries;
-          answer(st.tries === 1 ? 'correct' : 'fuzzy');
+          answer('correct');
         } else if (st.tries >= SAY_TRIES) {
-          answer('fuzzy');
+          answer('wrong');
         } else {
           renderSession();
         }
@@ -2583,7 +2588,7 @@
       case 'start-endless': startEndless(); break;
       case 'say-mic': startSay(); break;
       case 'say-skip': skipSay(); break;
-      case 'say-giveup': stopSay(); answer('fuzzy'); break;
+      case 'say-giveup': stopSay(); answer('wrong'); break;
       case 'shadow-next': nextShadow(); break;
       case 'shadow-exit': exitShadow(); break;
       case 'start-free': {
@@ -2604,6 +2609,7 @@
       case 'show-card': session.cardShown = true; renderSession(); session.cardShown = false; break;
       case 'give-up': session.spellInput = ''; session.typed = null; answer('wrong'); break;
       case 'export': exportData(); break;
+      case 'backup-later': state.settings.backupSnooze = addDays(today(), 7); save(); render(); break;
       case 'report': openReport('題目有問題', reportText(), '題目資訊'); break;
       case 'copy-errors': openReport('App 出錯', errorReportText(), '錯誤紀錄'); break;
       case 'report-general': openReport(null, '', 'App 版本與裝置資訊'); break;
@@ -2685,7 +2691,30 @@
     if (next) { e.preventDefault(); next.click(); }
   });
 
+  // 備份提醒：學了 30 個以上、超過 30 天沒匯出就在首頁提醒（按「稍後」7 天內不再提醒）
+  var BACKUP_DAYS = 30;
+  function backupDue() {
+    var s = state.settings;
+    var learned = Object.keys(state.words).filter(function (id) { return isLearned(id); }).length;
+    if (learned < 30) return false;
+    if (s.backupSnooze && s.backupSnooze > today()) return false;
+    return !s.lastExport || s.lastExport <= addDays(today(), -BACKUP_DAYS);
+  }
+  function backupCard() {
+    if (!backupDue()) return '';
+    var s = state.settings;
+    return '<section class="card backup-card"><h2>💾 備份一下學習紀錄</h2>' +
+      '<p class="hint">' + (s.lastExport ? '上次備份是 ' + s.lastExport + '。' : '你還沒有備份過。') +
+      '紀錄只存在這台手機，換手機或清除瀏覽器資料前一定要先匯出。</p>' +
+      '<div class="btn-row"><button class="btn primary" data-action="export">立即匯出</button>' +
+      '<button class="btn" data-action="backup-later">稍後提醒</button></div></section>';
+  }
+
   function exportData() {
+    state.settings.lastExport = today();
+    state.settings.backupSnooze = null;
+    save();
+    setTimeout(render);
     var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -2726,6 +2755,8 @@
     sayPhrasePasses: function (plain, said) { return bestSpeech(PHRASE_BY_ID['p:' + plain], [said]).pass; },
     currentAnswer: function () { return session && session.q ? session.q.answer : null; } };
   checkCountry();
+  // 請瀏覽器把紀錄當成重要資料，空間不足時不要自動清掉（Android Chrome 有效；iPhone 從主畫面開啟本來就不會清）
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () { /* 不支援 */ });
   render();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

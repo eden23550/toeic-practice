@@ -211,7 +211,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-action="exit"]');
     });
 
-    await step('作答後顯示每個選項的意思：答錯展開、答對收起', async () => {
+    await step('作答後顯示每個選項的意思、音標和發音（答對答錯都展開）', async () => {
       const notes = () => page.$$eval('.option-notes li', (lis) => lis.map((li) => ({
         cls: li.className, main: li.querySelector('b').textContent, text: li.textContent,
       })));
@@ -242,7 +242,9 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       const zh = (await page.textContent('.prompt-zh')).replace(/^\S+\s/, '').trim();
       const en = await page.evaluate((zh) => window.TOEIC_WORDS.find((w) => w.zh === zh).word, zh);
       await page.click(`.option[data-option="${en}"]`);
-      expect(await page.$('.notes-box:not([open])'), '答對時選項解析應該收起來');
+      expect(await page.$('.notes-box[open]'), '答對時也應該直接看到每個選項的意思');
+      expect((await page.$$('.option-notes .speak')).length === 4, '每個選項都應該有發音按鈕');
+      expect((await page.$$('.option-notes .kk')).length === 4, '每個單字選項都應該有 KK 音標');
       list = await notes();
       for (const n of list) {
         const w = await page.evaluate((word) => window.TOEIC_WORDS.find((x) => x.word === word), n.main);
@@ -402,7 +404,7 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       }
     });
 
-    await step('看字念出來：第一次念對算對、念錯後再念對算模糊、不方便說話會換題型', async () => {
+    await step('看字念出來：3 次內念對算對、3 次都念錯算錯、不方便說話會換題型', async () => {
       await page.click('[data-tab="practice"]');
       await page.click('[data-action="start-say"]');
       expect((await text('.tag')).startsWith('看'), '應該出現念出來的題目');
@@ -421,10 +423,20 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.evaluate(() => { window.__said = null; });
       await page.click('[data-action="say-mic"]');
       await page.waitForSelector('.fb-head');
-      expect((await text('.fb-head')).includes('差一點'), '念錯後再念對應該算模糊：' + await text('.fb-head'));
+      expect((await text('.fb-head')).startsWith('✓'), '3 次內念對都算對：' + await text('.fb-head'));
       expect((await text('.session-body')).includes('第 2 次念對'), '應該顯示第幾次念對');
       await page.click('[data-action="next"]');
-      // 第 3 題：不方便說話 → 這題和後面的題目都換掉
+      // 第 3 題：連念 3 次都不對 → 答錯
+      await page.evaluate(() => { window.__said = 'zzz'; });
+      for (let k = 0; k < 3; k++) {
+        await page.click('[data-action="say-mic"]');
+        await page.waitForFunction(() => document.querySelector('.fb-head') || !document.querySelector('.mic-btn.on'));
+      }
+      await page.waitForSelector('.fb-head');
+      await page.evaluate(() => { window.__said = null; });
+      expect((await text('.fb-head')).startsWith('✗'), '3 次都念錯應該算錯：' + await text('.fb-head'));
+      await page.click('[data-action="next"]');
+      // 第 4 題：不方便說話 → 這題和後面的題目都換掉
       await page.click('[data-action="say-skip"]');
       const tags = await runSession(20);
       expect(![...tags].some((t) => t.startsWith('看')), '按了不方便說話後不應該再出念出來的題目：' + [...tags].join('、'));
@@ -790,6 +802,21 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
       await page.click('[data-cat="track:life"]');
       expect((await text('#lib-list .hint')).includes('共 150 個字'), '出國生活應該有 150 個字');
       await page.click('[data-cat="all"]');
+    });
+
+    await step('備份提醒：學了 30 個以上又沒備份時出現，按「稍後提醒」就收起來', async () => {
+      await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('toeic-practice-v1'));
+        s.settings.lastExport = null; s.settings.backupSnooze = null;
+        localStorage.setItem('toeic-practice-v1', JSON.stringify(s));
+      });
+      await page.reload();
+      await page.click('[data-tab="home"]');
+      expect(await page.$('.backup-card'), '應該出現備份提醒');
+      await page.click('[data-action="backup-later"]');
+      expect(!(await page.$('.backup-card')), '按稍後提醒後應該收起來');
+      await page.click('[data-tab="settings"]');
+      expect((await text('.page')).includes('上次備份：從未備份'), '設定頁應該顯示上次備份時間');
     });
 
     await step('其他分頁都能正常顯示', async () => {
