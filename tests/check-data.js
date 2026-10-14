@@ -15,7 +15,7 @@ const errors = [];
 const fail = (where, msg) => errors.push(`${where}: ${msg}`);
 
 // ---------- 單字 ----------
-const POS = ['n.', 'v.', 'adj.', 'adv.', 'prep.'];
+const POS = ['n.', 'v.', 'adj.', 'adv.', 'prep.', 'conj.'];
 const words = window.TOEIC_WORDS;
 const wordIds = new Set();
 const wordSet = new Set(words.map((w) => w.word));
